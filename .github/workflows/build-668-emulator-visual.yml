@@ -62,25 +62,7 @@ jobs:
           disk-size: 6000M
           disable-animations: true
           emulator-boot-timeout: 600
-          script: |
-            set -u
-            mkdir -p screenshots
-            adb devices
-            adb shell settings put system accelerometer_rotation 0
-            adb shell settings put system user_rotation 0
-            cd source/android-v6323
-            bash ./gradlew --no-daemon --max-workers=2 :app:connectedDiagnosticAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=tr.borsatakip.v5.ui.Build668VisualScreenshotTest,tr.borsatakip.v5.ui.VisualScreenshotTest > ../../instrumentation.log 2>&1
-            TEST_STATUS=$?
-            tail -80 ../../instrumentation.log || true
-            cd ../..
-            adb pull /data/local/tmp/build668-screens screenshots/build668-screens || true
-            adb pull /sdcard/Android/data/tr.borsatakip.v5.diagnostic.v666.work/files/visual-screenshots screenshots/stock-detail || true
-            adb shell am start -n tr.borsatakip.v5.diagnostic.v666.work/tr.borsatakip.v5.ui.MainActivity || true
-            sleep 5
-            adb shell screencap -p /sdcard/build668-launch.png || true
-            adb pull /sdcard/build668-launch.png screenshots/build668-launch.png || true
-            echo "Instrumentation exit code: $TEST_STATUS"
-            exit "$TEST_STATUS"
+          script: bash .github/scripts/build668-emulator-smoke.sh
       - name: Upload screenshots, tests and emulator logs
         if: always()
         uses: actions/upload-artifact@v4
