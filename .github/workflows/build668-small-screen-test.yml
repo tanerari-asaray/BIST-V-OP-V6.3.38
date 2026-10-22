@@ -1,0 +1,75 @@
+name: Build 668 Small Screen Large Font Audit
+on:
+  push:
+    branches:
+      - build/668-deep-scan-ui-audit-20261022
+    paths:
+      - .github/workflows/build668-small-screen-test.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  screen-android15:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract exact source and apply audit fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          z=ZipFile('BIST-VIOP-V6.3.38-BUILD668-FINAL-SOURCE.zip')
+          assert z.testzip() is None
+          for name in z.namelist():
+              p=Path(name)
+              assert not p.is_absolute() and '..' not in p.parts
+          z.extractall('source')
+          PY
+          cd source
+          for p in build668-delayed-chart-display build668-delayed-chart-test-contract build668-delayed-chart-side-by-side build668-deep-scan-ui-audit; do
+            git apply --check "../patches/$p.patch"
+            git apply "../patches/$p.patch"
+          done
+          cd ..
+          python3 .github/scripts/patch_build668_screens.py
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Build app and Android instrumentation tests
+        working-directory: source/android-v6323
+        shell: bash
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --max-workers=2 :app:assembleDiagnostic :app:assembleDiagnosticAndroidTest
+      - name: Install and capture real Android screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          cores: 2
+          ram-size: 4096M
+          disk-size: 6000M
+          emulator-boot-timeout: 600
+          disable-animations: true
+          script: bash .github/scripts/build668-large-font-emulator.sh
+      - name: Upload screenshots and Android test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: B668-Large-Font-320dp-Android-Evidence
+          path: |
+            screenshots/**
+            large-font-android-test.log
+            source/android-v6323/app/build/outputs/androidTest-results/**
+            source/android-v6323/app/build/reports/androidTests/**
+          if-no-files-found: warn
