@@ -40,11 +40,17 @@ jobs:
           from pathlib import Path
           root=Path("source/android-v6323/app/src/main/res/layout")
           paths=[root/"activity_stock_detail.xml",root/"include_stock_detail_extended_metrics.xml"]
+          import xml.etree.ElementTree as ET
           for path in paths:
               before=path.read_text()
-              assert 'horizontalScrollBarEnabled="false"' in before, path
-              path.write_text(before.replace('horizontalScrollBarEnabled="false"','scrollbars="none"'))
-              print("Fixed AAPT2 invalid attribute in",path)
+              if path.name == "activity_stock_detail.xml":
+                  fixed=before.replace(' horizontalScrollBarEnabled="false"', '')
+              else:
+                  fixed=before.replace('horizontalScrollBarEnabled="false"', 'scrollbars="none"')
+              assert before != fixed, path
+              ET.fromstring(fixed)
+              path.write_text(fixed)
+              print("Fixed and XML-parsed:",path)
           PY
       - uses: actions/setup-java@v4
         with:
