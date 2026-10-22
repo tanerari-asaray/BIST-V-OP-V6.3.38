@@ -44,6 +44,8 @@ jobs:
           else
             echo "KVM device is not available"
           fi
+      - name: Make instrumentation capture and export real StockDetail screenshots
+        run: python3 .github/scripts/patch_build668_screens.py
       - name: Build APK and instrumentation APK
         working-directory: source/android-v6323
         run: |
