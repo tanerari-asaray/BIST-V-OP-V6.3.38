@@ -21,7 +21,7 @@ export=r'''val targetPkg = inst.targetContext.packageName
             val result = ParcelFileDescriptor.AutoCloseInputStream(streams[0]).bufferedReader().use { it.readText() }
             check(result.contains("EXPORTED")) { "Exporting screenshot $name failed: $result" }'''
 # Avoid Python translating the escaped newline into a real source newline.
-export=export.replace("EXPORTED\\n", "EXPORTED\\n")
+export=export.replace(r'EXPORTED\\n', r'EXPORTED\n')
 s=s.replace(anchor,anchor+"\n            "+export,1)
 stock.write_text(s)
 t=fullscreen.read_text()
