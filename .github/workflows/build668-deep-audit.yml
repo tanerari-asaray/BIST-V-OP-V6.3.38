@@ -8,6 +8,7 @@ on:
       - patches/build668-delayed-chart-test-contract.patch
       - patches/build668-delayed-chart-side-by-side.patch
       - patches/build668-deep-scan-ui-audit.patch
+      - patches/build668-verified-small-screen-ui.patch
       - .github/workflows/build668-deep-audit.yml
   workflow_dispatch:
 
@@ -43,6 +44,8 @@ jobs:
           git apply ../patches/build668-delayed-chart-side-by-side.patch
           git apply --check ../patches/build668-deep-scan-ui-audit.patch
           git apply ../patches/build668-deep-scan-ui-audit.patch
+          git apply --check ../patches/build668-verified-small-screen-ui.patch
+          git apply ../patches/build668-verified-small-screen-ui.patch
           grep -q 'delayedDisplaySource' android-v6323/app/src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt
       - uses: actions/setup-java@v4
         with:
