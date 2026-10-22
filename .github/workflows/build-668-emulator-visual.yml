@@ -63,14 +63,15 @@ jobs:
           disable-animations: true
           emulator-boot-timeout: 600
           script: |
-            set -uo pipefail
+            set -u
             mkdir -p screenshots
             adb devices
             adb shell settings put system accelerometer_rotation 0
             adb shell settings put system user_rotation 0
             cd source/android-v6323
-            bash ./gradlew --no-daemon --max-workers=2 :app:connectedDiagnosticAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=tr.borsatakip.v5.ui.Build668VisualScreenshotTest,tr.borsatakip.v5.ui.VisualScreenshotTest 2>&1 | tee ../../instrumentation.log
-            TEST_STATUS=${PIPESTATUS[0]}
+            bash ./gradlew --no-daemon --max-workers=2 :app:connectedDiagnosticAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=tr.borsatakip.v5.ui.Build668VisualScreenshotTest,tr.borsatakip.v5.ui.VisualScreenshotTest > ../../instrumentation.log 2>&1
+            TEST_STATUS=$?
+            tail -80 ../../instrumentation.log || true
             cd ../..
             adb pull /data/local/tmp/build668-screens screenshots/build668-screens || true
             adb pull /sdcard/Android/data/tr.borsatakip.v5.diagnostic.v666.work/files/visual-screenshots screenshots/stock-detail || true
