@@ -5,6 +5,7 @@ on:
       - build/668-deep-scan-ui-audit-20261022
     paths:
       - .github/workflows/build668-small-screen-test.yml
+      - patches/build668-verified-small-screen-ui.patch
   workflow_dispatch:
 permissions:
   contents: read
@@ -29,7 +30,7 @@ jobs:
           z.extractall('source')
           PY
           cd source
-          for p in build668-delayed-chart-display build668-delayed-chart-test-contract build668-delayed-chart-side-by-side build668-deep-scan-ui-audit; do
+          for p in build668-delayed-chart-display build668-delayed-chart-test-contract build668-delayed-chart-side-by-side build668-deep-scan-ui-audit build668-verified-small-screen-ui; do
             git apply --check "../patches/$p.patch"
             git apply "../patches/$p.patch"
           done
