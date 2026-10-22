@@ -44,7 +44,7 @@ jobs:
           for path in paths:
               before=path.read_text()
               if path.name == "activity_stock_detail.xml":
-                  fixed=before.replace(' horizontalScrollBarEnabled="false"', '')
+                  fixed=before.replace(' android:horizontalScrollBarEnabled="false"', '')
               else:
                   fixed=before.replace('horizontalScrollBarEnabled="false"', 'scrollbars="none"')
               assert before != fixed, path
