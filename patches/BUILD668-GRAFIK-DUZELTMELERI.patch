@@ -1,0 +1,579 @@
+--- a/android-v6323/app/src/main/res/layout/activity_stock_detail.xml
++++ b/android-v6323/app/src/main/res/layout/activity_stock_detail.xml
+@@ -1,172 +1,82 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:layout_width="match_parent"
+-    android:layout_height="match_parent"
+-    android:orientation="vertical"
+-    android:background="@drawable/bg_screen_gradient">
++<?xml version='1.0' encoding='utf-8'?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="vertical" android:background="@drawable/bg_screen_gradient">
+ 
+     <ScrollView android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:fillViewport="true">
+         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="vertical" android:padding="18dp">
+-            <TextView android:id="@+id/title" style="@style/Title" />
+-            <TextView android:id="@+id/subtitle" style="@style/Sub" android:layout_marginTop="2dp" />
++            <TextView android:id="@+id/title" style="@style/Title"/>
++            <TextView android:id="@+id/subtitle" style="@style/Sub" android:layout_marginTop="2dp"/>
+ 
+-            <Button
+-                android:id="@+id/btnTradingViewChart"
+-                android:layout_width="match_parent"
+-                android:layout_height="56dp"
+-                android:layout_marginTop="12dp"
+-                android:background="@drawable/bg_tradingview_button"
+-                android:backgroundTint="@null"
+-                android:drawableEnd="@drawable/ic_open_external"
+-                android:drawablePadding="10dp"
+-                android:elevation="3dp"
+-                android:gravity="center"
+-                android:minHeight="56dp"
+-                android:minWidth="0dp"
+-                android:paddingStart="18dp"
+-                android:paddingEnd="18dp"
+-                android:text="@string/ui_label_b4417e784e4f"
+-                android:textAllCaps="false"
+-                android:textColor="@color/white"
+-                android:textSize="14sp"
+-                android:textStyle="bold" />
++            <Button android:id="@+id/btnTradingViewChart" android:layout_width="match_parent" android:layout_height="56dp" android:layout_marginTop="12dp" android:background="@drawable/bg_tradingview_button" android:backgroundTint="@null" android:drawableEnd="@drawable/ic_open_external" android:drawablePadding="10dp" android:elevation="3dp" android:gravity="center" android:minHeight="56dp" android:minWidth="0dp" android:paddingStart="18dp" android:paddingEnd="18dp" android:text="@string/ui_label_b4417e784e4f" android:textAllCaps="false" android:textColor="@color/white" android:textSize="14sp" android:textStyle="bold"/>
+ 
+-            <LinearLayout
+-                android:layout_width="match_parent"
+-                android:layout_height="wrap_content"
+-                android:layout_marginTop="12dp"
+-                android:background="@drawable/bg_card"
+-                android:orientation="vertical"
+-                android:padding="14dp">
+-                <TextView
+-                    android:layout_width="wrap_content"
+-                    android:layout_height="wrap_content"
+-                    android:text="@string/ui_label_734823037c06"
+-                    android:textColor="@color/green"
+-                    android:textStyle="bold"
+-                    android:textSize="16sp" />
+-                <TextView android:id="@+id/liveConnectionStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="@string/ui_label_c8e3fa32485f" android:textColor="@color/text_secondary" />
+-                <TextView android:id="@+id/liveQuote" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="@string/ui_label_49c6da8b996a" android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="16sp" />
+-                <TextView android:id="@+id/liveMomentum" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/ui_label_3d9081a8a059" android:textColor="@color/text_secondary" android:textStyle="bold" />
+-                <TextView android:id="@+id/liveVolume" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:text="@string/ui_label_8e005b15677d" android:textColor="@color/text_secondary" />
+-                <TextView android:id="@+id/liveTrend" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:text="@string/ui_label_71d007d3fbaa" android:textColor="@color/text_secondary" android:textStyle="bold" />
+-                <TextView android:id="@+id/liveV5Score" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:text="@string/ui_label_5ceb66c2b260" android:textColor="@color/yellow" android:textStyle="bold" android:textSize="18sp" />
+-                <TextView android:id="@+id/liveDecision" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_chip" android:padding="10dp" android:text="@string/ui_label_f094b91eace6" android:textColor="@color/yellow" android:textStyle="bold" android:textSize="16sp" />
+-                <TextView android:id="@+id/liveCandle" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/ui_label_b1b75ee08d9d" android:textColor="@color/text_secondary" android:textSize="12sp" />
+-                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="@string/ui_label_7c1e7cb99cda" android:textColor="@color/blue" android:textStyle="bold" />
+-                <TextView android:id="@+id/liveTradingViewSignal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:text="@string/ui_label_9000015d0e1d" android:textColor="@color/text_secondary" />
+-                <TextView
+-                    android:layout_width="match_parent"
+-                    android:layout_height="wrap_content"
+-                    android:layout_marginTop="8dp"
+-                    android:text="@string/ui_label_5bad96420c54"
+-                    android:textColor="@color/text_muted"
+-                    android:textSize="12sp" />
+-            </LinearLayout>
++            <Button android:id="@+id/btnAdvancedChart" android:layout_width="match_parent" android:layout_height="52dp" android:layout_marginTop="8dp" android:layout_marginBottom="6dp" android:background="@drawable/bg_tradingview_button" android:backgroundTint="@null" android:text="TAM EKRAN GRAFİK + 4 TREND + TEKNİK" android:textAllCaps="false" android:textColor="@color/white" android:textStyle="bold" android:textSize="13sp"/><TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/auto_text_35c04e7eac" android:textColor="@color/blue" android:textStyle="bold" android:textSize="18sp"/>
+ 
+-            <TextView android:id="@+id/scoreSummary" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:background="@drawable/bg_card_blue" android:padding="16dp" android:textColor="@color/white" android:textStyle="bold" android:textSize="15sp" />
+-
+-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/auto_text_7ec8867439" android:textColor="@color/blue" android:textStyle="bold" />
+-            <TextView android:id="@+id/overview" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary" android:lineSpacingExtra="4dp" />
+-
+-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/auto_text_130cb16188" android:textColor="@color/blue" android:textStyle="bold" />
+-            <TextView android:id="@+id/trendCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary" />
+-            <TextView android:id="@+id/momentumCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary" />
+-            <TextView android:id="@+id/macdCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary" />
+-            <TextView android:id="@+id/volumeCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary" />
+-            <TextView android:id="@+id/extraCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary" />
+-
+-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/auto_text_f9178a0c94" android:textColor="@color/blue" android:textStyle="bold" />
+-            <TextView android:id="@+id/technicalDetails" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary" android:lineSpacingExtra="4dp" />
+-
+-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/auto_text_35c04e7eac" android:textColor="@color/blue" android:textStyle="bold" android:textSize="18sp" />
+-
+-            <HorizontalScrollView
+-                android:layout_width="match_parent"
+-                android:layout_height="wrap_content"
+-                android:layout_marginTop="8dp"
+-                android:clipToPadding="false"
+-                android:fillViewport="false"
+-                android:scrollbars="none">
+-                <LinearLayout
+-                    android:layout_width="wrap_content"
+-                    android:layout_height="wrap_content"
+-                    android:orientation="horizontal"
+-                    android:gravity="center_vertical">
+-                    <Button
+-                        android:id="@+id/chartZoomIn"
+-                        android:layout_width="52dp"
+-                        android:layout_height="48dp"
+-                        android:minWidth="0dp"
+-                        android:minHeight="48dp"
+-                        android:text="@string/auto_text_75e9d841ba"
+-                        android:textSize="24sp"
+-                        android:textStyle="bold" />
+-                    <Button
+-                        android:id="@+id/chartZoomOut"
+-                        android:layout_width="52dp"
+-                        android:layout_height="48dp"
+-                        android:layout_marginStart="6dp"
+-                        android:minWidth="0dp"
+-                        android:minHeight="48dp"
+-                        android:text="@string/auto_text_22215d8deb"
+-                        android:textSize="24sp"
+-                        android:textStyle="bold" />
+-                    <Button
+-                        android:id="@+id/btnTimeframeMenu"
+-                        android:layout_width="wrap_content"
+-                        android:layout_height="48dp"
+-                        android:layout_marginStart="8dp"
+-                        android:minWidth="118dp"
+-                        android:minHeight="48dp"
+-                        android:paddingStart="14dp"
+-                        android:paddingEnd="14dp"
+-                        android:maxLines="1"
+-                        android:ellipsize="none"
+-                        android:text="@string/auto_text_0be7600ee1"
+-                        android:textSize="14sp"
+-                        android:textStyle="bold" />
+-                    <Button android:id="@+id/toggleEma20" style="@style/ScanFilterButton" android:text="@string/auto_text_85744e53c1" android:layout_marginStart="8dp" android:minHeight="48dp" />
+-                    <Button android:id="@+id/toggleEma50" style="@style/ScanFilterButton" android:text="@string/auto_text_932eead5fe" android:layout_marginStart="4dp" android:minHeight="48dp" />
+-                    <Button android:id="@+id/toggleEma200" style="@style/ScanFilterButton" android:text="@string/auto_text_92bf6e3831" android:layout_marginStart="4dp" android:minHeight="48dp" />
+-                    <Button android:id="@+id/toggleBollinger" style="@style/ScanFilterButton" android:text="@string/auto_text_4fc324c8ac" android:layout_marginStart="4dp" android:minHeight="48dp" />
+-                    <Button android:id="@+id/toggleTrend" style="@style/ScanFilterButton" android:text="@string/auto_text_171afcc335" android:layout_marginStart="4dp" android:minHeight="48dp" />
+-                    <Button android:id="@+id/toggleChannel" style="@style/ScanFilterButton" android:text="@string/auto_text_542c04d354" android:layout_marginStart="4dp" android:minHeight="48dp" />
++            <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="8dp"><Button android:id="@+id/btnTf5m" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:layout_marginEnd="3dp" android:minHeight="48dp" android:minWidth="0dp" android:paddingStart="2dp" android:paddingEnd="2dp" android:text="5 dk" android:textAllCaps="false" android:textSize="12sp" android:background="@drawable/bg_chip" android:textColor="@color/text_primary"/><Button android:id="@+id/btnTf10m" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:layout_marginEnd="3dp" android:minHeight="48dp" android:minWidth="0dp" android:paddingStart="2dp" android:paddingEnd="2dp" android:text="10 dk" android:textAllCaps="false" android:textSize="12sp" android:background="@drawable/bg_chip" android:textColor="@color/text_primary"/><Button android:id="@+id/btnTf1h" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:layout_marginEnd="3dp" android:minHeight="48dp" android:minWidth="0dp" android:paddingStart="2dp" android:paddingEnd="2dp" android:text="1 saat" android:textAllCaps="false" android:textSize="12sp" android:background="@drawable/bg_chip" android:textColor="@color/text_primary"/><Button android:id="@+id/btnTf1d" android:layout_width="0dp" android:layout_height="48dp" android:layout_weight="1" android:layout_marginEnd="3dp" android:minHeight="48dp" android:minWidth="0dp" android:paddingStart="2dp" android:paddingEnd="2dp" android:text="Günlük" android:textAllCaps="false" android:textSize="12sp" android:background="@drawable/bg_chip" android:textColor="@color/text_primary"/></LinearLayout><HorizontalScrollView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:clipToPadding="false" android:fillViewport="false" android:scrollbars="none">
++                <LinearLayout android:layout_width="wrap_content" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical">
++                    <Button android:id="@+id/chartZoomIn" android:layout_width="52dp" android:layout_height="48dp" android:minWidth="0dp" android:minHeight="48dp" android:text="@string/auto_text_75e9d841ba" android:textSize="24sp" android:textStyle="bold"/>
++                    <Button android:id="@+id/chartZoomOut" android:layout_width="52dp" android:layout_height="48dp" android:layout_marginStart="6dp" android:minWidth="0dp" android:minHeight="48dp" android:text="@string/auto_text_22215d8deb" android:textSize="24sp" android:textStyle="bold"/>
++                    <Button android:id="@+id/btnTimeframeMenu" android:layout_width="wrap_content" android:layout_height="48dp" android:layout_marginStart="8dp" android:minWidth="118dp" android:minHeight="48dp" android:paddingStart="14dp" android:paddingEnd="14dp" android:maxLines="1" android:ellipsize="none" android:text="@string/auto_text_0be7600ee1" android:textSize="14sp" android:textStyle="bold"/>
++                    <Button android:id="@+id/toggleEma20" style="@style/ScanFilterButton" android:text="@string/auto_text_85744e53c1" android:layout_marginStart="8dp" android:minHeight="48dp"/>
++                    <Button android:id="@+id/toggleEma50" style="@style/ScanFilterButton" android:text="@string/auto_text_932eead5fe" android:layout_marginStart="4dp" android:minHeight="48dp"/>
++                    <Button android:id="@+id/toggleEma200" style="@style/ScanFilterButton" android:text="@string/auto_text_92bf6e3831" android:layout_marginStart="4dp" android:minHeight="48dp"/>
++                    <Button android:id="@+id/toggleBollinger" style="@style/ScanFilterButton" android:text="@string/auto_text_4fc324c8ac" android:layout_marginStart="4dp" android:minHeight="48dp"/>
++                    <Button android:id="@+id/toggleTrend" style="@style/ScanFilterButton" android:text="@string/auto_text_171afcc335" android:layout_marginStart="4dp" android:minHeight="48dp"/>
++                    <Button android:id="@+id/toggleChannel" style="@style/ScanFilterButton" android:text="@string/auto_text_542c04d354" android:layout_marginStart="4dp" android:minHeight="48dp"/>
+                 </LinearLayout>
+             </HorizontalScrollView>
+ 
+-            <FrameLayout android:layout_width="match_parent" android:layout_height="600dp" android:layout_marginTop="8dp">
+-                <tr.borsatakip.v5.ui.PriceChartView android:id="@+id/chart" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/bg_card" android:padding="8dp" />
+-                <Button
+-                    android:id="@+id/chartFullscreen"
+-                    android:layout_width="52dp"
+-                    android:layout_height="48dp"
+-                    android:layout_gravity="end|top"
+-                    android:layout_margin="8dp"
+-                    android:minWidth="0dp"
+-                    android:minHeight="48dp"
+-                    android:text="@string/auto_text_fa1d2d35b2"
+-                    android:textSize="18sp" />
++            <FrameLayout android:layout_width="match_parent" android:layout_height="430dp" android:layout_marginTop="4dp">
++                <tr.borsatakip.v5.ui.PriceChartView android:id="@+id/chart" android:layout_width="match_parent" android:layout_height="match_parent" android:background="@drawable/bg_card" android:padding="8dp"/>
++                <Button android:id="@+id/chartFullscreen" android:layout_width="52dp" android:layout_height="48dp" android:layout_gravity="end|top" android:layout_margin="8dp" android:minWidth="0dp" android:minHeight="48dp" android:text="@string/auto_text_fa1d2d35b2" android:textSize="18sp"/>
+             </FrameLayout>
+-            <TextView android:id="@+id/chartStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:textColor="@color/text_secondary" android:textSize="12sp" />
+-            <TextView android:id="@+id/trendInfoPanel" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card" android:padding="12dp" android:textColor="@color/text_primary" android:textSize="12sp" android:lineSpacingExtra="2dp" />
++            <TextView android:id="@+id/chartStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:textColor="@color/text_secondary" android:textSize="12sp"/>
++            <TextView android:id="@+id/trendInfoPanel" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card" android:padding="12dp" android:textColor="@color/text_primary" android:textSize="12sp" android:lineSpacingExtra="2dp"/>
+ 
+-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/auto_text_5a46338ff1" android:textColor="@color/blue" android:textStyle="bold" />
+-            <TextView android:id="@+id/dataQuality" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary" android:lineSpacingExtra="4dp" />
++            <Button android:id="@+id/btnShowLivePanel" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="12dp" android:background="@drawable/bg_chip" android:text="CANLI PİYASA AYRINTILARI  ▾" android:textAllCaps="false" android:textColor="@color/text_primary" android:textSize="13sp"/><LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/bg_card" android:orientation="vertical" android:padding="14dp" android:id="@+id/liveMonitorPanel" android:visibility="gone">
++                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/ui_label_734823037c06" android:textColor="@color/green" android:textStyle="bold" android:textSize="16sp"/>
++                <TextView android:id="@+id/liveConnectionStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="@string/ui_label_c8e3fa32485f" android:textColor="@color/text_secondary"/>
++                <TextView android:id="@+id/liveQuote" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:text="@string/ui_label_49c6da8b996a" android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="16sp"/>
++                <TextView android:id="@+id/liveMomentum" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/ui_label_3d9081a8a059" android:textColor="@color/text_secondary" android:textStyle="bold"/>
++                <TextView android:id="@+id/liveVolume" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:text="@string/ui_label_8e005b15677d" android:textColor="@color/text_secondary"/>
++                <TextView android:id="@+id/liveTrend" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:text="@string/ui_label_71d007d3fbaa" android:textColor="@color/text_secondary" android:textStyle="bold"/>
++                <TextView android:id="@+id/liveV5Score" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:text="@string/ui_label_5ceb66c2b260" android:textColor="@color/yellow" android:textStyle="bold" android:textSize="18sp"/>
++                <TextView android:id="@+id/liveDecision" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_chip" android:padding="10dp" android:text="@string/ui_label_f094b91eace6" android:textColor="@color/yellow" android:textStyle="bold" android:textSize="16sp"/>
++                <TextView android:id="@+id/liveCandle" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/ui_label_b1b75ee08d9d" android:textColor="@color/text_secondary" android:textSize="12sp"/>
++                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:text="@string/ui_label_7c1e7cb99cda" android:textColor="@color/blue" android:textStyle="bold"/>
++                <TextView android:id="@+id/liveTradingViewSignal" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="5dp" android:text="@string/ui_label_9000015d0e1d" android:textColor="@color/text_secondary"/>
++                <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:text="@string/ui_label_5bad96420c54" android:textColor="@color/text_muted" android:textSize="12sp"/>
++            </LinearLayout>
+ 
+-            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/auto_text_187b6aba4b" android:textColor="@color/blue" android:textStyle="bold" />
+-            <TextView android:id="@+id/dataStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary" android:lineSpacingExtra="4dp" />
++            <TextView android:id="@+id/scoreSummary" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="14dp" android:background="@drawable/bg_card_blue" android:padding="16dp" android:textColor="@color/white" android:textStyle="bold" android:textSize="15sp"/>
++
++            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/auto_text_7ec8867439" android:textColor="@color/blue" android:textStyle="bold"/>
++            <TextView android:id="@+id/overview" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary" android:lineSpacingExtra="4dp"/>
++
++            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/auto_text_130cb16188" android:textColor="@color/blue" android:textStyle="bold"/>
++            <TextView android:id="@+id/trendCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary"/>
++            <TextView android:id="@+id/momentumCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary"/>
++            <TextView android:id="@+id/macdCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary"/>
++            <TextView android:id="@+id/volumeCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary"/>
++            <TextView android:id="@+id/extraCard" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary"/>
++
++            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/auto_text_f9178a0c94" android:textColor="@color/blue" android:textStyle="bold"/>
++            <TextView android:id="@+id/technicalDetails" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary" android:lineSpacingExtra="4dp"/>
++
++            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/auto_text_5a46338ff1" android:textColor="@color/blue" android:textStyle="bold"/>
++            <TextView android:id="@+id/dataQuality" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary" android:lineSpacingExtra="4dp"/>
++
++            <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="16dp" android:text="@string/auto_text_187b6aba4b" android:textColor="@color/blue" android:textStyle="bold"/>
++            <TextView android:id="@+id/dataStatus" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/text_primary" android:lineSpacingExtra="4dp"/>
+ 
+             <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="12dp">
+-                <Button android:id="@+id/btnTechnicalScreen" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/auto_text_fdb855be9e" />
+-                <Button android:id="@+id/btnNewsScreen" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/auto_text_2c519de3dd" />
+-                <Button android:id="@+id/btnSignalScreen" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/auto_text_bc91974754" />
++                <Button android:id="@+id/btnTechnicalScreen" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/auto_text_fdb855be9e"/>
++                <Button android:id="@+id/btnNewsScreen" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/auto_text_2c519de3dd"/>
++                <Button android:id="@+id/btnSignalScreen" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:text="@string/auto_text_bc91974754"/>
+             </LinearLayout>
+ 
+-            <TextView android:id="@+id/validity" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/yellow" android:textStyle="bold" />
+-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/bg_card" android:padding="12dp" android:textColor="@color/text_secondary" android:text="@string/auto_text_3136b3e2bb" android:textSize="12sp" />
++            <TextView android:id="@+id/validity" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/bg_card" android:padding="14dp" android:textColor="@color/yellow" android:textStyle="bold"/>
++            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="12dp" android:background="@drawable/bg_card" android:padding="12dp" android:textColor="@color/text_secondary" android:text="@string/auto_text_3136b3e2bb" android:textSize="12sp"/>
+         </LinearLayout>
+     </ScrollView>
+ 
+-    <include layout="@layout/include_bottom_nav" />
++    <include layout="@layout/include_bottom_nav"/>
+ </LinearLayout>
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt
+@@ -6,6 +6,8 @@
+ import android.os.SystemClock
+ import android.view.View
+ import android.widget.Button
++import android.graphics.Typeface
++import org.json.JSONObject
+ import android.widget.TextView
+ import android.widget.Toast
+ import androidx.appcompat.widget.PopupMenu
+@@ -21,6 +23,7 @@
+ import tr.borsatakip.v5.data.ChartHistoryRepository
+ import tr.borsatakip.v5.data.LiveMarketSocket
+ import tr.borsatakip.v5.data.ProviderRouter
++import tr.borsatakip.v5.data.YahooFallbackProvider
+ import tr.borsatakip.v5.R
+ import tr.borsatakip.v5.model.DataMode
+ import tr.borsatakip.v5.model.DecisionState
+@@ -75,6 +78,8 @@
+     private lateinit var chartStatus: TextView
+     private lateinit var trendInfoPanel: TextView
+     private lateinit var chartRepository: ChartHistoryRepository
++    private var chartUsesDelayedYahoo = false
++    private var chartControlsReady = false
+     private lateinit var quoteProvider: ProviderRouter
+     private var chartLoadJob: Job? = null
+     private var chartRequestVersion = 0L
+@@ -92,6 +97,13 @@
+     private lateinit var liveTradingViewSignal: TextView
+     private val df = SimpleDateFormat("dd.MM.yyyy HH:mm:ss", Locale("tr","TR"))
+ 
++    private fun companyDisplayName(): String = x.companyName?.takeIf { it.isNotBlank() } ?: runCatching {
++        val snapshot = getSharedPreferences("stocks_kap_directory_v1", MODE_PRIVATE)
++            .getString("verified_directory", null) ?: return@runCatching null
++        JSONObject(snapshot).getJSONObject("names").optString(x.symbol.trim().uppercase(Locale.ROOT))
++            .takeIf { it.isNotBlank() }
++    }.getOrNull() ?: "Şirket unvanı doğrulanmadı"
++
+     override fun onCreate(savedInstanceState: Bundle?) {
+         super.onCreate(savedInstanceState)
+         setContentView(R.layout.activity_stock_detail)
+@@ -103,7 +115,12 @@
+         chartStatus = findViewById(R.id.chartStatus)
+         trendInfoPanel = findViewById(R.id.trendInfoPanel)
+         quoteProvider = ProviderRouter(this)
+-        chartRepository = ChartHistoryRepository(quoteProvider)
++        // When the on-screen quote explicitly comes from the opted-in delayed provider,
++        // request matching observed OHLCV history instead of a different, unconfigured backend.
++        chartUsesDelayedYahoo = x.source.contains("Yahoo", ignoreCase = true) ||
++            x.displayQuote?.source?.contains("Yahoo", ignoreCase = true) == true
++        chartRepository = ChartHistoryRepository(if (chartUsesDelayedYahoo)
++            YahooFallbackProvider(applicationContext) else quoteProvider)
+         liveSocket = LiveMarketSocket(this)
+         liveConnectionStatus = findViewById(R.id.liveConnectionStatus)
+         liveQuote = findViewById(R.id.liveQuote)
+@@ -117,8 +134,8 @@
+ 
+         findViewById<TextView>(R.id.title).text = "${x.symbol} · Karar kapanışı ${money(x.price)}"
+         findViewById<TextView>(R.id.subtitle).text = buildString {
+-            append(x.companyName ?: "Şirket adı yok")
+-            append(" • Günlük ").append(x.dailyChangePct?.let { "%+.2f%%".format(it) } ?: "VERİ YOK")
++            append(companyDisplayName())
++            append(" • Günlük ").append(x.dailyChangePct?.let { "%+.2f%%".format(it) } ?: "değişim doğrulanmadı")
+         }
+         findViewById<TextView>(R.id.scoreSummary).text = summaryText()
+         findViewById<TextView>(R.id.overview).text = overviewText()
+@@ -152,6 +169,8 @@
+         selectedTimeframe = savedInstanceState?.getString("detailTimeframe")?.let {
+             runCatching { ChartTimeframe.valueOf(it) }.getOrNull() } ?: ChartTimeframe.ONE_DAY
+         pendingChartViewState = savedInstanceState?.getBundle("chartViewState")
++        bindQuickChartControls()
++        chartControlsReady = true
+         loadTimeframe(selectedTimeframe)
+         findViewById<Button>(R.id.btnTechnicalScreen).setOnClickListener { startActivity(Intent(this, TechnicalAnalysisActivity::class.java).putExtra("opportunity", x)) }
+         findViewById<Button>(R.id.btnNewsScreen).setOnClickListener { startActivity(Intent(this, NewsActivity::class.java).putExtra("opportunity", x)) }
+@@ -215,12 +234,19 @@
+     private fun renderDisplayQuote(price: Double, changePct: Double?, source: String, realtime: Boolean, timestamp: Long) {
+         lastDisplayTimestamp = timestamp
+         lastDisplayRealtime = realtime
++        val usesYahoo = source.contains("Yahoo", ignoreCase = true)
++        if (::chartRepository.isInitialized && usesYahoo != chartUsesDelayedYahoo) {
++            chartUsesDelayedYahoo = usesYahoo
++            chartRepository = ChartHistoryRepository(if (usesYahoo)
++                YahooFallbackProvider(applicationContext) else quoteProvider)
++            if (chartControlsReady) loadTimeframe(selectedTimeframe)
++        }
+         quoteFailure = null
+         val fresh = realtime && System.currentTimeMillis() - timestamp in 0L..60_000L
+         findViewById<TextView>(R.id.title).text = "${x.symbol}  ${money(price)}"
+         findViewById<TextView>(R.id.subtitle).text = buildString {
+-            append(x.companyName ?: "Şirket adı yok")
+-            append(" • Günlük ").append(changePct?.let { "%+.2f%%".format(it) } ?: "VERİ YOK")
++            append(companyDisplayName())
++            append(" • Günlük ").append(changePct?.let { "%+.2f%%".format(it) } ?: "değişim doğrulanmadı")
+         }
+         liveQuote.text = buildString {
+             append("SON FİYAT  ").append(money(price))
+@@ -336,8 +362,8 @@
+ 
+     private fun bindLiveDecisionSnapshot() {
+         val realtimeDecision = !isDelayedObservation()
+-        val ratio = x.technical.volumeRatio
+-        liveVolume.text = "HACİM  ${ratio?.let { "x%.2f".format(it) } ?: "—"}"
++        val ratio = x.technical.volumeRatio?.takeIf { it.isFinite() && it > 0.0 }
++        liveVolume.text = "HACİM  ${ratio?.let { "x%.2f".format(it) } ?: "VERİ DOĞRULANMADI"}"
+         liveVolume.setTextColor(when { ratio == null -> getColor(R.color.text_secondary); ratio >= 1.5 -> getColor(R.color.green); ratio < 0.8 -> getColor(R.color.red); else -> getColor(R.color.text_primary) })
+ 
+         val normalizedDirection = x.direction.trim().uppercase(Locale.ROOT)
+@@ -386,6 +412,7 @@
+                 ChartTimeframe.ONE_MIN,
+                 ChartTimeframe.THREE_MIN,
+                 ChartTimeframe.FIVE_MIN,
++                ChartTimeframe.TEN_MIN,
+                 ChartTimeframe.FIFTEEN_MIN,
+                 ChartTimeframe.ONE_HOUR,
+                 ChartTimeframe.FOUR_HOUR,
+@@ -428,14 +455,55 @@
+         bind(R.id.toggleChannel, "KANAL ✓", "KANAL", { chart.showChannel }, { chart.showChannel = it })
+     }
+ 
++    /** Accessible, chart-first controls shared with the detail chart state. */
++    private fun bindQuickChartControls() {
++        val options = listOf(
++            R.id.btnTf5m to ChartTimeframe.FIVE_MIN,
++            R.id.btnTf10m to ChartTimeframe.TEN_MIN,
++            R.id.btnTf1h to ChartTimeframe.ONE_HOUR,
++            R.id.btnTf1d to ChartTimeframe.ONE_DAY
++        )
++        options.forEach { (id, tf) ->
++            findViewById<Button>(id).apply {
++                contentDescription = "${tf.label} gerçek OHLCV grafiğini göster"
++                setOnClickListener { loadTimeframe(tf) }
++            }
++        }
++        findViewById<Button>(R.id.btnAdvancedChart).setOnClickListener { openFullscreenChart() }
++        val livePanel = findViewById<View>(R.id.liveMonitorPanel)
++        findViewById<Button>(R.id.btnShowLivePanel).setOnClickListener { v ->
++            livePanel.visibility = if (livePanel.visibility == View.VISIBLE) View.GONE else View.VISIBLE
++            (v as Button).text = if (livePanel.visibility == View.VISIBLE)
++                "CANLI PİYASA AYRINTILARINI GİZLE  ▴" else "CANLI PİYASA AYRINTILARI  ▾"
++        }
++    }
++
++    private fun updateQuickChartControls() {
++        listOf(
++            R.id.btnTf5m to ChartTimeframe.FIVE_MIN,
++            R.id.btnTf10m to ChartTimeframe.TEN_MIN,
++            R.id.btnTf1h to ChartTimeframe.ONE_HOUR,
++            R.id.btnTf1d to ChartTimeframe.ONE_DAY
++        ).forEach { (id, tf) ->
++            findViewById<Button>(id).apply {
++                val selected = tf == selectedTimeframe
++                alpha = if (selected) 1f else 0.65f
++                setTextColor(if (selected) getColor(R.color.green) else getColor(R.color.text_primary))
++                setTypeface(null, if (selected) Typeface.BOLD else Typeface.NORMAL)
++                isSelected = selected
++            }
++        }
++    }
++
+     private fun loadTimeframe(timeframe: ChartTimeframe) {
+         selectedTimeframe = timeframe
++        updateQuickChartControls()
+         chartLoadJob?.cancel()
+         val request = ++chartRequestVersion
+         chart.candles = emptyList()
+         chart.trendAnalysis = null
+         chart.intraday = !timeframe.daily
+-        chartStatus.text = "${timeframe.label} gerçek OHLCV verisi yükleniyor..."
++        chartStatus.text = "${timeframe.label}: grafik verisi yükleniyor…"
+         trendInfoPanel.text = "Trend analizi hazırlanıyor..."
+         chartLoadJob = lifecycleScope.launch {
+             runCatching {
+@@ -449,8 +517,8 @@
+                 chart.trendAnalysis = trend
+                 pendingChartViewState?.let { chart.restoreDisplayState(it) }; pendingChartViewState = null
+                 chartStatus.text = when {
+-                    candles.isEmpty() -> "${timeframe.label}: gerçek OHLCV verisi bulunamadı. Sahte veri üretilmedi."
+-                    else -> "Zaman Dilimi: ${timeframe.label} • ${candles.size} gerçek mum • ${dateRange(candles.first().timestamp, candles.last().timestamp)} • Yakınlaştırmak için iki parmak kullanın."
++                    candles.isEmpty() -> "${timeframe.label}: veri sağlayıcısından mum verisi gelmedi. Grafik boş; sahte fiyat veya gösterge üretilmedi. TradingView düğmesiyle harici grafiği açabilirsiniz."
++                    else -> "${timeframe.label} • ${candles.size} OHLCV mumu • ${dateRange(candles.first().timestamp, candles.last().timestamp)} • ${if (chartUsesDelayedYahoo) "YEDEK/GECİKMELİ Yahoo Finance" else "Güncellik doğrulanmadı"}. İki parmakla yakınlaştırın."
+                 }
+                 trendInfoPanel.text = trendInfo(timeframe, trend)
+             }.onFailure { error ->
+@@ -467,8 +535,9 @@
+ 
+ 
+     private fun openFullscreenChart() {
+-        FullscreenChartActivity.open(this, x.symbol, "BIST", chart.candles, x.source,
+-            x.source.contains("Yahoo", true), selectedTimeframe, chart.saveDisplayState())
++        FullscreenChartActivity.open(this, x.symbol, "BIST", chart.candles,
++            if (chartUsesDelayedYahoo) "Yahoo Finance • YEDEK/GECİKMELİ" else x.source,
++            chartUsesDelayedYahoo, selectedTimeframe, chart.saveDisplayState())
+     }
+ 
+     private fun trendInfo(timeframe: ChartTimeframe, r: LinearTrendAnalyzer.Result): String {
+@@ -518,7 +587,7 @@
+                 "Fiyat EMA20, EMA50 ve EMA200 seviyelerinin üzerinde; mevcut trend yukarı yönlü."
+             else -> "EMA dizilimi tek yönlü güçlü trend teyidi vermiyor."
+         }
+-        val volume = x.technical.volumeRatio?.let {
++        val volume = x.technical.volumeRatio?.takeIf { it.isFinite() && it > 0.0 }?.let {
+             if (it < 0.8) "İşlem hacmi zayıf olduğu için sinyal teyidi azalıyor." else "Hacim sinyal değerlendirmesine veri sağlıyor."
+         } ?: "Hacim teyidi doğrulanamadı."
+         return if (isDelayedObservation()) {
+@@ -553,7 +622,7 @@
+         } else "YETERSİZ VERİ\nMACD/Signal hesaplanamadı."
+         findViewById<TextView>(R.id.macdCard).text = "MACD\n$macd"
+ 
+-        val volume = t.volumeRatio?.let { ratio ->
++        val volume = t.volumeRatio?.takeIf { it.isFinite() && it > 0.0 }?.let { ratio ->
+             val state = when { ratio >= 1.5 -> "GÜÇLÜ TEYİT"; ratio >= 1.0 -> "ORTA TEYİT"; else -> "ZAYIF TEYİT" }
+             "$state\nHacim ${"%.2f".format(ratio)}x. ${if (ratio < 1.0) "Düşük katılım sinyal teyidini azaltıyor." else "Hacim katılımı sinyal değerlendirmesini destekliyor."}"
+         } ?: "YETERSİZ VERİ\nHacim oranı hesaplanamadı."
+@@ -566,7 +635,7 @@
+             append("VWMA: ${fmt(t.vwma)}\n")
+             append("ATR14: ${fmt(t.atr14)} • volatilite/risk girdisi\n")
+             append("Destek: ${fmt(t.support)} • Direnç: ${fmt(t.resistance)}\n")
+-            append("Hacim anomalisi: ${x.volumeAnomalyPct?.let { "%+.1f%%".format(it) } ?: "Veri yok"}\n")
++            append("Hacim anomalisi: ${if (t.volumeRatio != null && t.volumeRatio.isFinite() && t.volumeRatio > 0.0) x.volumeAnomalyPct?.let { "%+.1f%%".format(it) } ?: "Veri yok" else "Veri doğrulanmadı"}\n")
+             x.rsiRiskMessage?.let { append("RSI Risk Uyarısı: $it\n") }
+             x.riskPlan?.let { p ->
+                 append("Giriş: ${fmt(p.entry)} • Stop: ${fmt(p.stop)} • Hedef1: ${fmt(p.target1)} • Hedef2: ${fmt(p.target2)}\n")
+@@ -577,13 +646,13 @@
+ 
+     private fun technicalText():String {
+         val t=x.technical
+-        return "EMA20: ${fmt(t.ema20)}\nEMA50: ${fmt(t.ema50)}\nEMA200: ${fmt(t.ema200)}\nRSI14: ${fmt(t.rsi14)}\nMACD: ${fmt(t.macd)}\nSignal: ${fmt(t.macdSignal)}\nATR14: ${fmt(t.atr14)}\nVWMA20: ${fmt(t.vwma20 ?: t.vwap)}\nSession VWAP: ${fmt(t.sessionVwap)}\nVWMA(legacy): ${fmt(t.vwma)}\nHacim oranı: ${t.volumeRatio?.let { "%.2fx".format(it) } ?: "Veri yok"}\nBollinger alt/üst: ${fmt(t.bbLower)} / ${fmt(t.bbUpper)}\nDestek/Direnç: ${fmt(t.support)} / ${fmt(t.resistance)}"
++        return "EMA20: ${fmt(t.ema20)}\nEMA50: ${fmt(t.ema50)}\nEMA200: ${fmt(t.ema200)}\nRSI14: ${fmt(t.rsi14)}\nMACD: ${fmt(t.macd)}\nSignal: ${fmt(t.macdSignal)}\nATR14: ${fmt(t.atr14)}\nVWMA20: ${fmt(t.vwma20 ?: t.vwap)}\nSession VWAP: ${fmt(t.sessionVwap)}\nVWMA(legacy): ${fmt(t.vwma)}\nHacim oranı: ${t.volumeRatio?.takeIf { it.isFinite() && it > 0.0 }?.let { "%.2fx".format(it) } ?: "Veri yok"}\nBollinger alt/üst: ${fmt(t.bbLower)} / ${fmt(t.bbUpper)}\nDestek/Direnç: ${fmt(t.support)} / ${fmt(t.resistance)}"
+     }
+ 
+     private fun qualityText():String {
+         fun mark(ok:Boolean)=if(ok)"✓" else "⚠ Veri yok"
+         val hasPrice=x.price.isFinite()&&x.price>0
+-        val hasVol=x.technical.volumeRatio!=null
++        val hasVol=x.technical.volumeRatio?.let { it.isFinite() && it > 0.0 } == true
+         val hasOhlcv=x.candles.size>=220
+         val hasKap=!x.kapLabel.equals("Veri yok",true)&&x.kapLabel.isNotBlank()
+         val hasLevels=x.support!=null&&x.resistance!=null
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/FullscreenChartActivity.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/FullscreenChartActivity.kt
+@@ -193,7 +193,7 @@
+         root.addView(notice)
+         val tabs = row()
+         navigationTabs = tabs
+-        listOf("GRAFİK", "ÖZET", "AYRINTI", "FİNANSAL").forEachIndexed { index, title ->
++        listOf("GRAFİK", "TEKNİK", "PLAN", "FİNANSAL").forEachIndexed { index, title ->
+             tabs.addView(action(title) {
+                 pages.displayedChild = index
+                 if (index == 3) financial.load()
+@@ -209,7 +209,6 @@
+         val chartScroll = ScrollView(this).apply { isFillViewport = false }
+         chartScroll.addView(chartPage)
+         trendPanel = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+-        chartPage.addView(trendPanel)
+         val periods = row()
+         val choices = listOf(ChartTimeframe.FIVE_MIN, ChartTimeframe.TEN_MIN, ChartTimeframe.FIFTEEN_MIN, ChartTimeframe.ONE_HOUR,
+             ChartTimeframe.FOUR_HOUR, ChartTimeframe.ONE_DAY, ChartTimeframe.ONE_WEEK)
+@@ -230,7 +229,7 @@
+         }
+         selection = label("Muma dokunun • basılı tutup sürükleyin: OHLCV • iki parmak: yakınlaştır", 11f)
+         chartPage.addView(selection)
+-        chartPage.addView(chart, LinearLayout.LayoutParams(-1, dp(390)))
++        chartPage.addView(chart, LinearLayout.LayoutParams(-1, dp(410)))
+         val indicators = row()
+         fun toggle(name: String, current: () -> Boolean, change: (Boolean) -> Unit) {
+             val button = action(name) {}
+@@ -268,6 +267,7 @@
+             panelsExpanded = !panelsExpanded; applyPanels()
+         }, LinearLayout.LayoutParams(0, dp(44), 1.7f))
+         chartPage.addView(tools)
++        chartPage.addView(trendPanel)  // Charts first: four actual timeframe readings follow below.
+         readableBottom = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+         chartPage.addView(readableBottom)
+         pages.addView(chartScroll)
+@@ -563,7 +563,7 @@
+         renderEverydayExplanation(readableBottom, state.candles)
+         if (bars.isEmpty()) {
+             card(summary, "ANALİZ YOK", "Seçili döneme ait OHLCV verisi bekleniyor. Önceki hesaplamalar temizlendi.")
+-            card(details, "GÖSTERGELER", "Yeterli veri olmadan değer veya sinyal gösterilmez.")
++            card(details, "PLAN YOK", "Yeterli OHLCV verisi olmadığı için giriş, stop ve hedef uydurulmaz.")
+             renderEverydayExplanation(details, state.candles)
+             return
+         }
+@@ -597,8 +597,15 @@
+             "RSI14 (Wilder)" to s.rsi.lastOrNull(), "MACD12/26" to s.macd.lastOrNull(),
+             "MACD sinyal9" to s.signal.lastOrNull(), "MACD histogram" to s.histogram.lastOrNull(),
+             "ATR14 (Wilder)" to s.atr.lastOrNull())
+-        metrics.forEach { (name, value) -> card(details, name, value?.let { number(it, 4) } ?: "Hesaplanamadı / yetersiz veri") }
+-        card(details, "HESAPLAMA / VERİ", "${bars.size} incelenen OHLCV mumu (en yeni mum hesap dışında) · ${period.label}\n" +
++        metrics.forEach { (name, value) -> card(summary, name, value?.let { number(it, 4) } ?: "Hesaplanamadı / yetersiz veri") }
++        card(details, "KOŞULLU TEKNİK PLAN", if (support == null || resistance == null)
++            "İşlem planı oluşturmak için son mum hariç en az 20 önceki mum gerekli."
++            else "Direnç ${number(resistance)} üzerinde teyitli kapanış ve hacim desteği: yukarı yön incelenir. " +
++                "Destek ${number(support)} altında teyitli kapanış: düşüş riski yeniden değerlendirilir. " +
++                "Destek ile direnç arasında beklemek, yanlış kırılım riskini azaltabilir. Bunlar otomatik AL/SAT emri değildir.")
++        card(details, "GİRİŞ / STOP / HEDEF", "Kesin giriş, stop ve hedef verilemez: canlı fiyat, kapanmış mum, ATR, hacim ve risk/ödül teyitleri birlikte gereklidir. " +
++            "Veri eksikken işlem yapılmasını önermiyoruz. Gecikmeli verilerle canlı emir oluşturulmaz.")
++        card(summary, "HESAPLAMA / VERİ", "${bars.size} incelenen OHLCV mumu (en yeni mum hesap dışında) · ${period.label}\n" +
+             "EMA ilk dönem SMA ile başlatılır. RSI/ATR Wilder düzeltmesi kullanır. VWAP İstanbul tarihine göre gün içinde sıfırlanır; günlük/haftalıkta gösterilmez. Haftalık son mum oluşuyor olabilir.\n" +
+             "4 saatlik mumlar aynı günün kesintisiz dört saatinden oluşur; eksik grup çizilmez. Göstergeler seçili dönemden hesaplanır.")
+         renderEverydayExplanation(details, state.candles)
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/PriceChartView.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/PriceChartView.kt
+@@ -355,6 +355,36 @@
+         priceMin = minV; priceMax = maxV; pricePlotTop = top; pricePlotBottom = bottom
+         val span = (maxV - minV).takeIf { it > 0.0 } ?: 1.0
+         fun y(v: Double) = bottom - (((v - minV) / span).toFloat() * (bottom - top))
++        // Reference S/R comes ONLY from the previous 20 observed bars, excluding
++        // the possibly forming last candle. Width of the tinted zone uses ATR14
++        // when available; without ATR there is only an exact horizontal line.
++        val previous20 = all.take(start + visible.size).dropLast(1).takeLast(20)
++        if (previous20.size == 20) {
++            val referenceSupport = previous20.minOf { it.low }
++            val referenceResistance = previous20.maxOf { it.high }
++            val atr = series.atr.getOrNull(start + visible.size - 2)?.takeIf { it.isFinite() && it > 0.0 }
++            fun level(value: Double, color: Int, name: String) {
++                if (value !in minV..maxV) return
++                val offset = (atr ?: 0.0) * 0.25
++                if (offset > 0.0) {
++                    val upper = y((value + offset).coerceAtMost(maxV))
++                    val lower = y((value - offset).coerceAtLeast(minV))
++                    canvas.drawRect(left, min(upper, lower), right, max(upper, lower),
++                        Paint(Paint.ANTI_ALIAS_FLAG).apply { this.color = Color.argb(30, Color.red(color), Color.green(color), Color.blue(color)) })
++                }
++                val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
++                    this.color = color; strokeWidth = 1.8f; style = Paint.Style.STROKE
++                }
++                canvas.drawLine(left, y(value), right, y(value), linePaint)
++                val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
++                    this.color = color; textSize = smallText.textSize
++                }
++                canvas.drawText("$name ${"%.2f".format(value)}", left + 6f,
++                    (y(value) - labelPaint.textSize * 0.4f).coerceIn(top + labelPaint.textSize, bottom - labelPaint.textSize), labelPaint)
++            }
++            level(referenceSupport, Color.rgb(0, 218, 151), "DESTEK")
++            level(referenceResistance, Color.rgb(255, 88, 116), "DİRENÇ")
++        }
+         val step = if (visible.size <= 1) (right - left) else (right - left) / (visible.size - 1)
+         val bodyWidth = max(2f, min(12f, step * 0.55f))
+         if (showChannel) drawDynamicChannel(canvas, all, start, visible.size, left, right, ::y)
