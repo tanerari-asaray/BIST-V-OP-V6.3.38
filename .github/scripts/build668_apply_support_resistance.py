@@ -83,7 +83,7 @@ s=change(s,
 price.write_text(s)
 s=full.read_text()
 if "import tr.borsatakip.v5.analysis.LinearTrendAnalyzer" not in s:
-    s=change(s,"import tr.borsatakip.v5.", "import tr.borsatakip.v5.analysis.LinearTrendAnalyzer\nimport tr.borsatakip.v5.")
+    s=change(s,"import tr.borsatakip.v5.R", "import tr.borsatakip.v5.analysis.LinearTrendAnalyzer\nimport tr.borsatakip.v5.R")
 s=change(s,"showTrendLines = false; showChannel = false",
          "showTrendLines = true; showChannel = true; showSupportResistance = true")
 s=change(s,"        chart.signalPrice = null; chart.signalTime = null; chart.trendAnalysis = null",
