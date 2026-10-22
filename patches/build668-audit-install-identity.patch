@@ -1,6 +1,6 @@
 --- a/android-v6323/app/build.gradle.kts
 +++ b/android-v6323/app/build.gradle.kts
-@@ -71,9 +71,9 @@
+@@ -70,8 +70,8 @@
          create("diagnostic") {
              initWith(getByName("debug"))
              // Keep Build 666 package identity and diagnostic signer for an in-place update.
