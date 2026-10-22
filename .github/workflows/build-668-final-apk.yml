@@ -90,8 +90,8 @@ jobs:
           lines=Path("../../gradle-build.log").read_text(errors="replace").splitlines()
           pats=[
               r"^> Task .* FAILED",
-              r"(^|\\s)(error:|AAPT: error:|e: )",
-              r"^\\* What went wrong:",
+              r"(^|\s)(error:|AAPT: error:|e: )",
+              r"^\* What went wrong:",
               r"^Execution failed for task",
               r"^> .*",
               r"^Caused by:",
@@ -107,13 +107,13 @@ jobs:
               for j in sorted(chosen)[:100]:
                   print(f"{j+1}: {lines[j]}")
           else:
-              print("\\n".join(lines[-70:]))
+              print("\n".join(lines[-70:]))
           PY
             echo "::endgroup::"
             echo "::error::Build 668 diagnostic Gradle assemble failed; see FIRST COMPILATION ERRORS above and Build668-CI-Diagnostics artifact."
             {
               echo "### Build 668 failed"
-              echo "The diagnostic APK was not generated. See the `BUILD 668 - FIRST COMPILATION ERRORS` group and `gradle-build.log` artifact."
+              echo 'The diagnostic APK was not generated. See the BUILD 668 - FIRST COMPILATION ERRORS group and gradle-build.log artifact.'
             } >> "$GITHUB_STEP_SUMMARY"
           fi
           exit "$result"
