@@ -1,0 +1,60 @@
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/MarketScreenUi.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/MarketScreenUi.kt
+@@ -7,9 +7,6 @@
+ import android.graphics.Typeface
+ import android.graphics.drawable.GradientDrawable
+ import android.graphics.drawable.RippleDrawable
+-import android.text.SpannableString
+-import android.text.Spanned
+-import android.text.style.RelativeSizeSpan
+ import android.view.View
+ import android.view.ViewGroup
+ import android.widget.Button
+@@ -48,18 +45,19 @@
+         listOf(R.id.stocksEmptyAction, R.id.viopEmptyAction, R.id.refresh).forEach { id ->
+             activity.findViewById<Button>(id)?.setTextColor(activity.getColor(R.color.market_mint))
+         }
+-        val labels = listOf(R.id.navHome to "⌂\nAna Sayfa", R.id.navBist to "▥\nHisseler",
+-            R.id.navViop to "Ⅱ\nVİOP", R.id.navFav to "☆\nFavoriler", R.id.navSettings to "⚙\nAyarlar")
++        // XML drawableTop already supplies the five vector icons.
++        // Glyph-prefixed labels displayed a second icon row and clipped text at 130% font size.
++        val labels = listOf(R.id.navHome to "Ana Sayfa", R.id.navBist to "Hisseler",
++            R.id.navViop to "VİOP", R.id.navFav to "Favoriler", R.id.navSettings to "Ayarlar")
+         activity.findViewById<View>(R.id.bottomNav).setBackgroundColor(activity.getColor(R.color.market_bg))
+         labels.forEach { (id, label) ->
+             activity.findViewById<TextView>(id).apply {
+-                text = SpannableString(label).apply {
+-                    setSpan(RelativeSizeSpan(1.8f), 0, label.indexOf('\n'), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE)
+-                }
++                text = label
++                maxLines = 1
+                 textSize = 10f
+                 setTextColor(activity.getColor(if (id == activeId) R.color.market_mint else R.color.market_muted))
+                 setTypeface(null, if (id == activeId) Typeface.BOLD else Typeface.NORMAL)
+-                contentDescription = label.substringAfter('\n') + if (id == activeId) ", seçili" else ""
++                contentDescription = label + if (id == activeId) ", seçili" else ""
+                 isSelected = id == activeId
+             }
+         }
+--- /dev/null
++++ b/android-v6323/app/src/test/java/tr/borsatakip/v5/analysis/Build668BottomNavSingleIconRegressionTest.kt
+@@ -0,0 +1,19 @@
++package tr.borsatakip.v5.analysis
++
++import org.junit.Assert.assertFalse
++import org.junit.Assert.assertTrue
++import org.junit.Test
++import java.io.File
++
++class Build668BottomNavSingleIconRegressionTest {
++    @Test fun marketScreensRenderOneVectorIconAndOneLabel() {
++        val xml = File("src/main/res/layout/include_bottom_nav.xml").readText()
++        val ui = File("src/main/java/tr/borsatakip/v5/ui/MarketScreenUi.kt").readText()
++        assertTrue(xml.contains("android:drawableTop=\"@drawable/ic_sd_nav_home\""))
++        assertTrue(xml.contains("android:drawableTop=\"@drawable/ic_sd_nav_stocks\""))
++        assertTrue(ui.contains("R.id.navHome to \"Ana Sayfa\""))
++        assertTrue(ui.contains("text = label"))
++        assertFalse(ui.contains("SpannableString(label)"))
++        assertFalse(ui.contains("label.substringAfter('\n')"))
++    }
++}
