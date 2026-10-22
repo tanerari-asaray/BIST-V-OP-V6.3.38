@@ -2,7 +2,7 @@ name: Build 668 Final Diagnostic APK
 on:
   push:
     branches:
-      - build/668-final-apk-20261022
+      - build/668-verified-apk-source-fix-20261022
     paths:
       - BIST-VIOP-V6.3.38-BUILD668-FINAL-SOURCE.zip
       - .github/workflows/build-668-final-apk.yml
@@ -32,25 +32,6 @@ jobs:
               z.extractall("source")
           assert (Path("source")/"android-v6323"/"gradlew").is_file()
           print("Exact checked-in archive extracted.")
-          PY
-      - name: Apply Android XML compiler correction
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-          root=Path("source/android-v6323/app/src/main/res/layout")
-          paths=[root/"activity_stock_detail.xml",root/"include_stock_detail_extended_metrics.xml"]
-          import xml.etree.ElementTree as ET
-          for path in paths:
-              before=path.read_text()
-              if path.name == "activity_stock_detail.xml":
-                  fixed=before.replace(' android:horizontalScrollBarEnabled="false"', '')
-              else:
-                  fixed=before.replace('horizontalScrollBarEnabled="false"', 'scrollbars="none"')
-              assert before != fixed, path
-              ET.fromstring(fixed)
-              path.write_text(fixed)
-              print("Fixed and XML-parsed:",path)
           PY
       - uses: actions/setup-java@v4
         with:
