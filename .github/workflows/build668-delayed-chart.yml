@@ -5,6 +5,8 @@ on:
       - build/668-delayed-chart-display-20261022
     paths:
       - patches/build668-delayed-chart-display.patch
+      - patches/build668-delayed-chart-test-contract.patch
+      - patches/build668-delayed-chart-side-by-side.patch
       - .github/workflows/build668-delayed-chart.yml
   workflow_dispatch:
 
