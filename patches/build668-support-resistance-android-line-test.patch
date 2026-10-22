@@ -1,0 +1,80 @@
+--- /dev/null
++++ b/android-v6323/app/src/androidTest/java/tr/borsatakip/v5/ui/Build668SupportResistanceLineTest.kt
+@@ -0,0 +1,77 @@
++package tr.borsatakip.v5.ui
++
++import android.content.Context
++import android.content.Intent
++import android.graphics.Bitmap
++import android.graphics.Canvas
++import android.graphics.Color
++import android.os.ParcelFileDescriptor
++import android.view.View
++import android.view.ViewGroup
++import androidx.test.core.app.ActivityScenario
++import androidx.test.core.app.ApplicationProvider
++import androidx.test.ext.junit.runners.AndroidJUnit4
++import androidx.test.platform.app.InstrumentationRegistry
++import org.junit.Assert.*
++import org.junit.Test
++import org.junit.runner.RunWith
++import tr.borsatakip.v5.model.Candle
++import java.io.File
++
++/** Offline fixture only. This is not a screenshot of actual market quotes. */
++@RunWith(AndroidJUnit4::class)
++class Build668SupportResistanceLineTest {
++    private fun hierarchy(v: View): List<View> = listOf(v) +
++        if (v is ViewGroup) (0 until v.childCount).flatMap { hierarchy(v.getChildAt(it)) } else emptyList()
++
++    @Test fun realObservedHorizontalSupportAndResistanceArePaintedOnAndroidCanvas() {
++        val ctx = ApplicationProvider.getApplicationContext<Context>()
++        val rows = ArrayList((0 until 90).map { i ->
++            Candle(1_790_000_000_000L + i * 300_000L, 100.0,
++                if (i % 10 == 3) 106.0 else 103.0,
++                if (i % 10 == 7) 94.0 else 97.0, 100.0, 1_000.0 + i)
++        })
++        val intent = Intent(ctx, FullscreenChartActivity::class.java).apply {
++            putExtra("symbol", "OFFLINE-TEST")
++            putExtra("market", "BIST")
++            putExtra("source", "ANDROID TEST FIXTURE - NOT MARKET DATA")
++            putExtra("timeframe", "FIVE_MIN")
++            putExtra("candles", rows)
++        }
++        ActivityScenario.launch<FullscreenChartActivity>(intent).use { scenario ->
++            scenario.onActivity { activity ->
++                val chart = hierarchy(activity.window.decorView).filterIsInstance<PriceChartView>().first()
++                val levels = requireNotNull(chart.supportResistance) { "Chart levels must be bound to verified OHLCV" }
++                assertNotNull(levels.support)
++                assertNotNull(levels.resistance)
++                assertTrue(chart.width > 200 && chart.height > 200)
++                val bitmap = Bitmap.createBitmap(chart.width, chart.height, Bitmap.Config.ARGB_8888)
++                chart.draw(Canvas(bitmap))
++                var red = 0
++                var green = 0
++                for (y in 0 until bitmap.height step 2) for (x in 0 until bitmap.width step 2) {
++                    val col = bitmap.getPixel(x, y)
++                    val r = Color.red(col); val g = Color.green(col); val b = Color.blue(col)
++                    if (r > 200 && r > g * 1.5f && r > b * 1.35f) red++
++                    if (g > 145 && g > r * 1.4f && g > b * 1.15f) green++
++                }
++                bitmap.recycle()
++                assertTrue("Resistance red pixels not painted ($red)", red > 12)
++                assertTrue("Support green pixels not painted ($green)", green > 12)
++            }
++            val instrument = InstrumentationRegistry.getInstrumentation()
++            instrument.waitForIdleSync()
++            val bitmap = requireNotNull(instrument.uiAutomation.takeScreenshot())
++            val dest = File(ctx.filesDir, "build668-screens").apply { mkdirs() }
++            File(dest, "05-destek-direnc-test.png").outputStream().use { assertTrue(bitmap.compress(Bitmap.CompressFormat.PNG, 100, it)) }
++            bitmap.recycle()
++            val (read, write) = instrument.uiAutomation.executeShellCommandRw("sh")
++            val script = "mkdir -p /data/local/tmp/build668-screens && " +
++                "run-as ${ctx.packageName} cat files/build668-screens/05-destek-direnc-test.png > " +
++                "/data/local/tmp/build668-screens/05-destek-direnc-test.png && echo EXPORTED\n"
++            ParcelFileDescriptor.AutoCloseOutputStream(write).use { it.write(script.toByteArray()) }
++            val result = ParcelFileDescriptor.AutoCloseInputStream(read).bufferedReader().use { it.readText() }
++            assertTrue(result.contains("EXPORTED"))
++        }
++    }
++}
