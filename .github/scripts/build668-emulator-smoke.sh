@@ -11,8 +11,9 @@ status=$?
 tail -n 90 "$ROOT/instrumentation.log" || true
 cd "$ROOT" || exit 21
 adb pull /data/local/tmp/build668-screens screenshots/build668-screens || true
-adb pull /sdcard/Android/data/tr.borsatakip.v5.diagnostic.v666.work/files/visual-screenshots screenshots/stock-detail || true
-adb shell am start -n tr.borsatakip.v5.diagnostic.v666.work/tr.borsatakip.v5.ui.MainActivity || true
+adb pull /data/local/tmp/build668-hisse screenshots/stock-detail || true
+adb install -r "$ROOT/source/android-v6323/app/build/outputs/apk/diagnostic/app-diagnostic.apk" || exit 30
+adb shell am start -W -n tr.borsatakip.v5.diagnostic.v666.work/tr.borsatakip.v5.ui.MainActivity || exit 31
 sleep 4
 adb shell screencap -p /sdcard/build668-launch.png || true
 adb pull /sdcard/build668-launch.png screenshots/build668-launch.png || true
