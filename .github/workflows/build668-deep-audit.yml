@@ -8,7 +8,7 @@ on:
       - patches/build668-delayed-chart-test-contract.patch
       - patches/build668-delayed-chart-side-by-side.patch
       - patches/build668-deep-scan-ui-audit.patch
-      - .github/workflows/build668-delayed-chart.yml
+      - .github/workflows/build668-deep-audit.yml
   workflow_dispatch:
 
 permissions:
