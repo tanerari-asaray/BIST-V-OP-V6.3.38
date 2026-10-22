@@ -1,0 +1,94 @@
+name: Build 668 Emulator UI and Screenshots
+on:
+  push:
+    branches:
+      - build/668-verified-apk-source-fix-20261022
+    paths:
+      - .github/workflows/build-668-emulator-visual.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  emulator-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Unpack verified Build 668 source archive
+        run: |
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          file=Path("BIST-VIOP-V6.3.38-BUILD668-FINAL-SOURCE.zip")
+          with ZipFile(file) as z:
+              assert z.testzip() is None
+              for name in z.namelist():
+                  p=Path(name)
+                  assert not p.is_absolute() and ".." not in p.parts
+              z.extractall("source")
+          assert Path("source/android-v6323/app/src/androidTest/java/tr/borsatakip/v5/ui/Build668VisualScreenshotTest.kt").exists()
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable KVM
+        run: |
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+            ls -l /dev/kvm
+          else
+            echo "KVM device is not available"
+          fi
+      - name: Build APK and instrumentation APK
+        working-directory: source/android-v6323
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon --max-workers=2 :app:assembleDiagnostic :app:assembleDiagnosticAndroidTest --stacktrace 2>&1 | tee ../../androidtest-build.log
+      - name: Launch emulator, instrument Hisse Detayı and capture screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          cores: 2
+          ram-size: 4096M
+          heap-size: 512M
+          disk-size: 6000M
+          disable-animations: true
+          emulator-boot-timeout: 600
+          script: |
+            set -uo pipefail
+            mkdir -p screenshots
+            adb devices
+            adb shell settings put system accelerometer_rotation 0
+            adb shell settings put system user_rotation 0
+            cd source/android-v6323
+            bash ./gradlew --no-daemon --max-workers=2 :app:connectedDiagnosticAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=tr.borsatakip.v5.ui.Build668VisualScreenshotTest,tr.borsatakip.v5.ui.VisualScreenshotTest 2>&1 | tee ../../instrumentation.log
+            TEST_STATUS=${PIPESTATUS[0]}
+            cd ../..
+            adb pull /data/local/tmp/build668-screens screenshots/build668-screens || true
+            adb pull /sdcard/Android/data/tr.borsatakip.v5.diagnostic.v666.work/files/visual-screenshots screenshots/stock-detail || true
+            adb shell am start -n tr.borsatakip.v5.diagnostic.v666.work/tr.borsatakip.v5.ui.MainActivity || true
+            sleep 5
+            adb shell screencap -p /sdcard/build668-launch.png || true
+            adb pull /sdcard/build668-launch.png screenshots/build668-launch.png || true
+            echo "Instrumentation exit code: $TEST_STATUS"
+            exit "$TEST_STATUS"
+      - name: Upload screenshots, tests and emulator logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build668-Android-Emulator-Screenshots
+          path: |
+            screenshots/**
+            instrumentation.log
+            androidtest-build.log
+            source/android-v6323/app/build/outputs/androidTest-results/**
+            source/android-v6323/app/build/reports/androidTests/**
+          if-no-files-found: warn
