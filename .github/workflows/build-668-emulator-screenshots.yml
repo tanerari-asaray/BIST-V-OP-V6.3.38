@@ -1,0 +1,70 @@
+name: Build 668 Android Emulator Screenshots
+on:
+  push:
+    branches:
+      - build/668-verified-apk-source-fix-20261022
+    paths:
+      - .github/workflows/build-668-emulator-screenshots.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  emulator-visual-validation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract checked-in source
+        run: |
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          with ZipFile("BIST-VIOP-V6.3.38-BUILD668-FINAL-SOURCE.zip") as z:
+              assert z.testzip() is None
+              z.extractall("source")
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile Android screenshot tests
+        shell: bash
+        working-directory: source/android-v6323
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon --max-workers=2 :app:compileDiagnosticAndroidTestKotlin 2>&1 | tee ../../androidtest-compile.log
+      - name: Capture real emulator screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_4
+          disable-animations: true
+          emulator-boot-timeout: 600
+          script: |
+            cd source/android-v6323
+            ./gradlew --no-daemon --max-workers=2 :app:connectedDiagnosticAndroidTest -Pandroid.testInstrumentationRunnerArguments.class=tr.borsatakip.v5.ui.Build668VisualScreenshotTest
+            mkdir -p ../../build668-device-screens
+            adb pull /data/local/tmp/build668-screens ../../build668-device-screens
+      - name: Upload emulator screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build668-Real-Emulator-Screenshots
+          path: build668-device-screens/**
+          if-no-files-found: warn
+      - name: Upload instrumented test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: Build668-AndroidTest-Reports
+          path: |
+            androidtest-compile.log
+            source/android-v6323/app/build/outputs/androidTest-results/**
+            source/android-v6323/app/build/reports/androidTests/**
+          if-no-files-found: warn
