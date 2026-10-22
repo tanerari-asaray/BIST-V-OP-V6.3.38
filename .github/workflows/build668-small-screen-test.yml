@@ -43,6 +43,17 @@ jobs:
         with:
           packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
       - uses: gradle/actions/setup-gradle@v4
+      - name: Enable hardware virtualization and inspect runner
+        shell: bash
+        run: |
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+            ls -l /dev/kvm
+          else
+            echo "KVM unavailable; emulator may be slow or fail to boot"
+          fi
+          free -h
+          df -h .
       - name: Build app and Android instrumentation tests
         working-directory: source/android-v6323
         shell: bash
@@ -59,7 +70,8 @@ jobs:
           cores: 2
           ram-size: 4096M
           disk-size: 6000M
-          emulator-boot-timeout: 600
+          emulator-boot-timeout: 480
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
           disable-animations: true
           script: bash .github/scripts/build668-large-font-emulator.sh
       - name: Upload screenshots and Android test log
