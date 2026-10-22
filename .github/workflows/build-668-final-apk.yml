@@ -56,16 +56,21 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - name: Use preinstalled Android SDK tools
+      # Install command-line tools instead of assuming a runner-specific sdkmanager path.
+      - name: Set up Android SDK 35 and build tools
+        uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - name: Verify Android SDK availability
         shell: bash
         run: |
           set -euo pipefail
-          echo "ANDROID_HOME=${ANDROID_HOME:-none}"
-          SDKMANAGER=$(find "$ANDROID_HOME/cmdline-tools" -path '*/bin/sdkmanager' -type f | head -1)
-          test -n "$SDKMANAGER"
-          echo "Using: $SDKMANAGER"
-          yes | "$SDKMANAGER" --licenses >/dev/null || true
-          "$SDKMANAGER" 'platforms;android-35' 'build-tools;35.0.0' 'platform-tools'
+          command -v sdkmanager
+          sdkmanager --version
+          test -f "${ANDROID_HOME}/platforms/android-35/android.jar"
+          test -x "${ANDROID_HOME}/build-tools/35.0.0/aapt"
+          test -x "${ANDROID_HOME}/build-tools/35.0.0/apksigner"
+          echo "Android SDK platform 35 and build-tools 35.0.0 ready."
       - uses: gradle/actions/wrapper-validation@v4
       - uses: gradle/actions/setup-gradle@v4
       - name: Assemble Build 668 diagnostic APK
@@ -94,7 +99,7 @@ jobs:
           APK=$(find source/android-v6323/app/build/outputs/apk/diagnostic -maxdepth 1 -name '*.apk' -type f | head -1)
           test -n "$APK"
           unzip -t "$APK" | tail -2
-          unzip -Z1 "$APK" | grep -Eq '^classes([0-9]+)?\\.dex$'
+          unzip -Z1 "$APK" | grep -Eq '^classes([0-9]+)?\.dex$'
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -E 'package:|sdkVersion|targetSdkVersion'
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "versionCode='668'"
           "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "versionName='6.3.38'"
