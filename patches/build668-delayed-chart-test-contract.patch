@@ -1,0 +1,11 @@
+--- a/android-v6323/app/src/test/java/tr/borsatakip/v5/analysis/Build668StockDetailLayoutContractTest.kt
++++ b/android-v6323/app/src/test/java/tr/borsatakip/v5/analysis/Build668StockDetailLayoutContractTest.kt
+@@ -20,7 +20,7 @@
+     @Test fun fourPeriodsHaveRealIndependentRequestsAndClickableChartControls() {
+         assertTrue(listOf("ChartTimeframe.FIVE_MIN", "ChartTimeframe.TEN_MIN", "ChartTimeframe.ONE_HOUR", "ChartTimeframe.ONE_DAY").all { activity.contains(it) })
+         assertTrue(listOf("quick5m", "quick10m", "quick1h", "quick1d", "trend5m", "trend15m", "trend1h", "trend1d").all { layout.contains("@+id/$it") })
+-        assertTrue(activity.contains("chartRepository.load(x.symbol, timeframe, x.candles)"))
++        assertTrue(activity.contains("chartRepository.loadWithSource(x.symbol, timeframe, x.candles)"))
+     }
+ 
+     @Test fun technicalExplanationAndDataFreshnessCannotUseSamplePrice() {
