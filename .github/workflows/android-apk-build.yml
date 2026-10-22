@@ -24,6 +24,19 @@ jobs:
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
+        continue-on-error: true
+
+      - name: Install Android SDK packages
+        shell: bash
+        run: |
+          set -euo pipefail
+          SDKMANAGER="$(find "$ANDROID_HOME/cmdline-tools" -type f -name sdkmanager -print -quit)"
+          if [ -z "$SDKMANAGER" ]; then
+            echo "::error::Android sdkmanager was not installed."
+            exit 1
+          fi
+          yes | "$SDKMANAGER" --licenses >/dev/null || true
+          "$SDKMANAGER" "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
       - name: Extract uploaded source package
         shell: bash
@@ -32,7 +45,7 @@ jobs:
           mkdir -p source
           unzip -q BIST-VIOP-V6.3.38-BUILD668-KAYNAK-PAKETI.zip -d source
           echo "Extracted source package:"
-          find source -maxdepth 3 -type f \( -name gradlew -o -name settings.gradle -o -name settings.gradle.kts \) -print
+          find source -type f \( -name gradlew -o -name settings.gradle -o -name settings.gradle.kts \) -print
 
       - name: Locate Gradle project and build APK
         shell: bash
