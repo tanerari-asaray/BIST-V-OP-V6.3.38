@@ -47,6 +47,14 @@ jobs:
           echo "Extracted source package:"
           find source -type f \( -name gradlew -o -name settings.gradle -o -name settings.gradle.kts \) -print
 
+      - name: Apply verified Build 668 chart and analysis patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git apply --check --directory=source patches/BUILD668-GRAFIK-DUZELTMELERI.patch
+          git apply --directory=source patches/BUILD668-GRAFIK-DUZELTMELERI.patch
+          echo "Build 668 chart and trend UI patch applied successfully."
+
       - name: Locate Gradle project and build APK
         shell: bash
         run: |
