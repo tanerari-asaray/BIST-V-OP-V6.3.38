@@ -34,6 +34,8 @@ jobs:
           cd source
           git apply --check ../patches/build668-delayed-chart-display.patch
           git apply ../patches/build668-delayed-chart-display.patch
+          git apply --check ../patches/build668-delayed-chart-test-contract.patch
+          git apply ../patches/build668-delayed-chart-test-contract.patch
           grep -q 'delayedDisplaySource' android-v6323/app/src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt
       - uses: actions/setup-java@v4
         with:
