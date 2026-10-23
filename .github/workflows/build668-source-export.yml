@@ -1,0 +1,83 @@
+name: Export Exact Build 668 Audited Source
+on:
+  push:
+    branches:
+      - build/668-deep-scan-ui-audit-20261022
+    paths:
+      - .github/workflows/build668-source-export.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify base source and apply exactly the APK build patches
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          archive=Path('BIST-VIOP-V6.3.38-BUILD668-FINAL-SOURCE.zip')
+          with ZipFile(archive) as z:
+              assert z.testzip() is None
+              for entry in z.namelist():
+                  p=Path(entry)
+                  assert not p.is_absolute() and '..' not in p.parts
+              z.extractall('source')
+          PY
+          echo "122432394e91055acc4e0189151ba3cb5b8250e0d4d4c9e5bbd6fb12cd69d28d  patches/build668-verified-small-screen-ui.patch" | sha256sum -c
+          cd source
+          for p in \
+            build668-delayed-chart-display \
+            build668-delayed-chart-test-contract \
+            build668-delayed-chart-side-by-side \
+            build668-deep-scan-ui-audit \
+            build668-verified-small-screen-ui \
+            build668-bottom-nav-single-icon \
+            build668-audit-install-identity; do
+            git apply --check "../patches/$p.patch"
+            git apply "../patches/$p.patch"
+            echo "PATCH_APPLIED $p"
+          done
+          grep -q 'delayedDisplaySource' android-v6323/app/src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt
+          grep -q 'diagnostic.v668.audited' android-v6323/app/build.gradle.kts
+          grep -q 'Build668BottomNavSingleIconRegressionTest' android-v6323/app/src/test/java/tr/borsatakip/v5/analysis/Build668BottomNavSingleIconRegressionTest.kt
+      - name: Export complete clean source ZIP and manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          import hashlib, os
+          root=Path('source')
+          out=Path('BIST-VIOP-V6.3.38-BUILD668-DENETIMLI-TAM-KAYNAK.zip')
+          files=sorted(p for p in root.rglob('*') if p.is_file() and '.git' not in p.parts)
+          with ZipFile(out,'w',compression=ZIP_DEFLATED,compresslevel=7) as z:
+              for p in files:
+                  z.write(p,arcname=p.relative_to(root).as_posix())
+          with ZipFile(out) as z:
+              assert z.testzip() is None
+              assert len(z.namelist())==len(files)
+              assert 'android-v6323/app/build.gradle.kts' in z.namelist()
+          sha=hashlib.sha256(out.read_bytes()).hexdigest()
+          Path('source-manifest.txt').write_text(
+            f'GitHub source ref: {os.environ["GITHUB_SHA"]}\n'
+            f'Exact patch sequence matches Build 668 Deep Scan and UI Audit\n'
+            f'Files: {len(files)}\n'
+            f'Source ZIP SHA256: {sha}\n'
+            f'Diagnostic appId suffix: .diagnostic.v668.audited\n'
+          )
+          print(Path('source-manifest.txt').read_text())
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Build668-Verified-Complete-Source
+          path: |
+            BIST-VIOP-V6.3.38-BUILD668-DENETIMLI-TAM-KAYNAK.zip
+            source-manifest.txt
+          if-no-files-found: error
