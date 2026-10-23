@@ -1,0 +1,142 @@
+name: Build 668 Deep Scan and UI Audit
+on:
+  push:
+    branches:
+      - build/668-deep-scan-ui-audit-20261022
+    paths:
+      - patches/build668-delayed-chart-display.patch
+      - patches/build668-delayed-chart-test-contract.patch
+      - patches/build668-delayed-chart-side-by-side.patch
+      - patches/build668-deep-scan-ui-audit.patch
+      - patches/build668-verified-small-screen-ui.patch
+      - patches/build668-bottom-nav-single-icon.patch
+      - patches/build668-audit-install-identity.patch
+      - patches/build668-provider-mode-separation-20261023.patch
+      - patches/build668-provider-mode-b115-test-fix.patch
+      - .github/workflows/build668-deep-audit.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-delayed-chart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract baseline source and apply tracked patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          archive=Path('BIST-VIOP-V6.3.38-BUILD668-FINAL-SOURCE.zip')
+          with ZipFile(archive) as z:
+              assert z.testzip() is None
+              for entry in z.namelist():
+                  assert '..' not in Path(entry).parts and not Path(entry).is_absolute()
+              z.extractall('source')
+          PY
+          cd source
+          git apply --check ../patches/build668-delayed-chart-display.patch
+          git apply ../patches/build668-delayed-chart-display.patch
+          git apply --check ../patches/build668-delayed-chart-test-contract.patch
+          git apply ../patches/build668-delayed-chart-test-contract.patch
+          git apply --check ../patches/build668-delayed-chart-side-by-side.patch
+          git apply ../patches/build668-delayed-chart-side-by-side.patch
+          git apply --check ../patches/build668-deep-scan-ui-audit.patch
+          git apply ../patches/build668-deep-scan-ui-audit.patch
+          echo "122432394e91055acc4e0189151ba3cb5b8250e0d4d4c9e5bbd6fb12cd69d28d  ../patches/build668-verified-small-screen-ui.patch" | sha256sum -c
+          git apply --check ../patches/build668-verified-small-screen-ui.patch
+          git apply ../patches/build668-verified-small-screen-ui.patch
+          git apply --check ../patches/build668-bottom-nav-single-icon.patch
+          git apply ../patches/build668-bottom-nav-single-icon.patch
+          git apply --check ../patches/build668-audit-install-identity.patch
+          git apply ../patches/build668-audit-install-identity.patch
+          git apply --check ../patches/build668-provider-mode-separation-20261023.patch
+          git apply ../patches/build668-provider-mode-separation-20261023.patch
+          git apply --check ../patches/build668-provider-mode-b115-test-fix.patch
+          git apply ../patches/build668-provider-mode-b115-test-fix.patch
+          grep -q 'delayedDisplaySource' android-v6323/app/src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt
+      - name: Bundle exact verified patched source tree
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          out=Path('BIST-VIOP-V6.3.38-BUILD668-PROVIDER-AYRIMI-TAM-KAYNAK.zip')
+          root=Path('source')
+          with ZipFile(out,'w',compression=ZIP_DEFLATED,compresslevel=6) as z:
+              for file in sorted(root.rglob('*')):
+                  if file.is_file():
+                      z.write(file,file.relative_to(root))
+          with ZipFile(out) as z:
+              assert z.testzip() is None
+              assert 'android-v6323/app/src/main/java/tr/borsatakip/v5/data/MarketModePolicy.kt' in z.namelist()
+              assert 'android-v6323/app/src/test/java/tr/borsatakip/v5/data/MarketModePolicyTest.kt' in z.namelist()
+          print('Source ZIP ready',out, out.stat().st_size)
+          PY
+      - name: Upload exact source with fixes
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIST-VIOP-B668-PROVIDER-AYRIMI-TAM-KAYNAK
+          path: BIST-VIOP-V6.3.38-BUILD668-PROVIDER-AYRIMI-TAM-KAYNAK.zip
+          if-no-files-found: error
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile diagnostic APK and run all 1000+ unit tests
+        working-directory: source/android-v6323
+        shell: bash
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          bash ./gradlew --no-daemon --max-workers=2 :app:assembleDiagnostic :app:testDiagnosticUnitTest --stacktrace 2>&1 | tee ../../delayed-chart-build-tests.log
+      - name: Android lint
+        working-directory: source/android-v6323
+        shell: bash
+        run: |
+          set -o pipefail
+          bash ./gradlew --no-daemon --max-workers=2 :app:lintDiagnostic 2>&1 | tee ../../delayed-chart-lint.log
+      - name: Verify APK version DEX and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=$(find source/android-v6323/app/build/outputs/apk/diagnostic -maxdepth 1 -name '*.apk' -type f | head -1)
+          test -n "$APK"
+          unzip -t "$APK" | tail -2
+          unzip -Z1 "$APK" | grep -Eq '^classes([0-9]+)?\.dex$'
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "versionCode='668'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "versionName='6.3.38'"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | tee delayed-apk-signature.txt
+          sha256sum "$APK" | tee delayed-apk-sha256.txt
+          mkdir -p output
+          cp "$APK" output/BIST-VIOP-V6.3.38-BUILD668-GECIKMELI-DIAGNOSTIC.apk
+      - name: Upload verified diagnostic APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIST-VIOP-B668-DERIN-DENETIM-APK
+          path: |
+            output/*.apk
+            delayed-apk-sha256.txt
+            delayed-apk-signature.txt
+          if-no-files-found: error
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: B668-deep-audit-test-logs
+          path: |
+            delayed-chart-build-tests.log
+            delayed-chart-lint.log
+            source/android-v6323/app/build/test-results/testDiagnosticUnitTest/**
+          if-no-files-found: warn

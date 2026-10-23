@@ -1,0 +1,20 @@
+--- a/android-v6323/app/src/test/java/tr/borsatakip/v5/data/B115IntradayFallbackSourceTest.kt
++++ b/android-v6323/app/src/test/java/tr/borsatakip/v5/data/B115IntradayFallbackSourceTest.kt
+@@ -36,7 +36,7 @@
+     @Test fun automaticRunnerFallsBackInsteadOfReturningBackendConfigError() {
+         val src = source("java/tr/borsatakip/v5/worker/AutomaticScanRunner.kt")
+         assertFalse(src.contains("otomatik taraması için Production Backend ve API anahtarı gerekli"))
+-        assertTrue(src.contains("BackendUrlPolicy.isValid(settings.baseUrl) && settings.apiKey.isNotBlank()"))
++        assertTrue(src.contains("MarketModePolicy.bistSource("))
+         assertTrue(src.contains("experimentalFallbackOverride = !productionReady"))
+         assertTrue(src.contains("if (productionReady) BistScanMode.REALTIME_ONLY else BistScanMode.DELAYED_ANALYSIS"))
+     }
+@@ -81,7 +81,7 @@
+         val src = source("java/tr/borsatakip/v5/ui/BistScanActivity.kt")
+         assertTrue(src.contains("Kaynak: Yahoo Finance • YEDEK/GECİKMELİ • seçili timeframe OHLCV"))
+         assertTrue(src.contains("DOĞRULANMIŞ AL/SAT SİNYALİ DEĞİLDİR"))
+-        assertTrue(src.contains("Yahoo Finance ${'$'}{tf.label} yedek/gecikmeli teknik analiz hazır"))
++        assertTrue(src.contains("Yahoo Finance ${'$'}{tf.label} gecikmeli OHLCV denenebilir"))
+         assertFalse(src.contains("yalnız GECİKMELİ/GÜNLÜK teknik analiz • intraday tarama yok"))
+     }
+ }

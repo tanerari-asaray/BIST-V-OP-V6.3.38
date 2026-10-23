@@ -1,0 +1,13 @@
+--- a/android-v6323/app/build.gradle.kts
++++ b/android-v6323/app/build.gradle.kts
+@@ -72,8 +72,8 @@
+             initWith(getByName("debug"))
+             // Keep Build 666 package identity and diagnostic signer for an in-place update.
+             // Existing connection settings and local data remain in the same app sandbox.
+-            applicationIdSuffix = ".diagnostic.v666.work"
+-            resValue("string", "app_name", "Borsa 668 · Grafik ve Analiz")
++            applicationIdSuffix = ".diagnostic.v668.delayed"
++            resValue("string", "app_name", "Borsa 668 · Gecikmeli Grafik")
+             matchingFallbacks += listOf("debug")
+         }
+         release {

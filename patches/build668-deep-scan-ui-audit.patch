@@ -1,0 +1,485 @@
+--- a/android-v6323/app/src/test/java/tr/borsatakip/v5/analysis/Build668DeepAuditRegressionTest.kt
++++ b/android-v6323/app/src/test/java/tr/borsatakip/v5/analysis/Build668DeepAuditRegressionTest.kt
+@@ -0,0 +1,51 @@
++package tr.borsatakip.v5.analysis
++
++import org.junit.Assert.*
++import org.junit.Test
++import tr.borsatakip.v5.model.*
++
++class Build668DeepAuditRegressionTest {
++    private fun row(direction: String, validity: SignalValidity, decision: DecisionState) = Opportunity(
++        symbol="ASELS", companyName="ASELS", price=100.0, dailyChangePct=1.0, score=90, riskScore=15,
++        direction=direction, technicalLabel="", volumeLabel="", kapLabel="", liquidityLabel="",
++        support=95.0, resistance=110.0, source="test", dataTimestamp=1000L,
++        candles=emptyList(), technical=TechnicalSnapshot(null,null,null,null,null,null,null,null,null,null,null,null,null),
++        dataMode=DataMode.REALTIME, isRealtime=true, finalSignalScore=95, rankingScore=88,
++        longScore=95, shortScore=0, signalValidity=validity, decisionState=decision,
++        riskPlan=RiskPlan(100.0,95.0,110.0,120.0,2.0,4.0)
++    )
++
++    @Test fun watchNeverKeepsTradeDirectionOrPlanAfterOptimization() {
++        val watched=row("LONG",SignalValidity.WATCH,DecisionState.WATCH)
++        val safe=OpportunityPublicationPolicy.enforceVerifiedPublication(watched)
++        assertEquals("NEUTRAL",safe.direction)
++        assertNull(safe.riskPlan)
++        assertEquals(0,safe.finalSignalScore)
++        assertEquals(0,safe.rankingScore)
++        assertEquals(DecisionState.WATCH,safe.decisionState)
++    }
++    @Test fun evenNominallyValidUnpublishedSignalIsNotTradeEligible() {
++        val x=row("SHORT",SignalValidity.VALID,DecisionState.VERIFIED_OPPORTUNITY)
++        val safe=OpportunityPublicationPolicy.enforceVerifiedPublication(x)
++        assertEquals("NEUTRAL",safe.direction)
++        assertEquals(SignalValidity.WATCH,safe.signalValidity)
++        assertNull(safe.riskPlan)
++    }
++    @Test fun watchedLongIsNeverInLongOrHighPowerFilter() {
++        val x=row("LONG",SignalValidity.WATCH,DecisionState.WATCH)
++        assertTrue(OpportunityFilterPolicy.apply(listOf(x),OpportunityFilter.LONG).isEmpty())
++        assertTrue(OpportunityFilterPolicy.apply(listOf(x),OpportunityFilter.HIGH_POWER).isEmpty())
++        assertEquals(1,OpportunityFilterPolicy.apply(listOf(x),OpportunityFilter.ALL).size)
++    }
++    @Test fun duplicateOrBackwardOrFutureCandlesAreNeverScored() {
++        val now=System.currentTimeMillis()
++        val c=(0 until 240).map { i ->
++            val p=80.0+i*0.1
++            Candle(now-(240L-i)*60_000L,p,p+1.0,p-1.0,p,1000.0)
++        }
++        val base=Stock("TEST","Test",c,"unit",now,interval="1m",lastBarClosed=false)
++        assertNull(OpportunityEngine.score(base.copy(candles=c.toMutableList().also { it[100]=it[99].copy() })))
++        assertNull(OpportunityEngine.score(base.copy(candles=c.reversed())))
++        assertNull(OpportunityEngine.score(base.copy(candles=c.toMutableList().also { it[239]=it[239].copy(timestamp=now+60_000L) })))
++    }
++}
+--- a/android-v6323/app/src/main/res/layout/activity_stock_detail.xml
++++ b/android-v6323/app/src/main/res/layout/activity_stock_detail.xml
+@@ -12,24 +12,24 @@
+         <Button android:id="@+id/btnTradingViewChart" android:layout_width="match_parent" android:layout_height="48dp" android:layout_marginTop="6dp" android:background="@drawable/bg_tradingview_button" android:backgroundTint="@null" android:drawableEnd="@drawable/ic_open_external" android:drawablePadding="10dp" android:elevation="3dp" android:gravity="center" android:minHeight="48dp" android:minWidth="0dp" android:paddingStart="14dp" android:paddingEnd="14dp" android:text="@string/ui_label_b4417e784e4f" android:textAllCaps="false" android:textColor="@color/white" android:textSize="14sp" android:textStyle="bold" android:fontFamily="sans-serif-medium" android:letterSpacing="0.04" android:includeFontPadding="false"/>
+         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:gravity="center_vertical" android:layout_marginTop="5dp">
+           <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:orientation="vertical" android:layout_weight="1">
+-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:id="@+id/quoteCompany" android:text="Şirket adı bekleniyor" android:textSize="13sp" android:textColor="@color/text_secondary" android:fontFamily="sans-serif" android:includeFontPadding="false"/>
+-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:id="@+id/quotePrice" android:text="— TL" android:textSize="@dimen/sd_stock_price_size" android:textStyle="bold" android:textColor="@color/white" android:includeFontPadding="false" android:fontFamily="sans-serif"/>
+-            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:id="@+id/quoteChange" android:text="Günlük değişim: —" android:textSize="11sp" android:textColor="@color/text_secondary" android:fontFamily="sans-serif" android:includeFontPadding="false"/>
++            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:id="@+id/quoteCompany" android:text="Şirket adı bekleniyor" android:textSize="13sp" android:textColor="@color/text_secondary" android:fontFamily="sans-serif" android:includeFontPadding="false" android:maxLines="2" android:ellipsize="end"/>
++            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:id="@+id/quotePrice" android:text="— TL" android:textSize="@dimen/sd_stock_price_size" android:textStyle="bold" android:textColor="@color/white" android:includeFontPadding="false" android:fontFamily="sans-serif" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="18sp" android:autoSizeMaxTextSize="36sp" android:autoSizeStepGranularity="1sp" android:maxLines="1"/>
++            <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:id="@+id/quoteChange" android:text="Günlük değişim: —" android:textSize="11sp" android:textColor="@color/text_secondary" android:fontFamily="sans-serif" android:includeFontPadding="false" android:maxLines="2" android:ellipsize="end"/>
+           </LinearLayout>
+-          <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:id="@+id/quoteSource" android:text="VERİ BEKLENİYOR&#10;Kaynak: —" android:textSize="11sp" android:textColor="@color/yellow" android:gravity="right" android:fontFamily="sans-serif" android:includeFontPadding="false"/>
++          <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:id="@+id/quoteSource" android:text="VERİ BEKLENİYOR&#10;Kaynak: —" android:textSize="11sp" android:textColor="@color/yellow" android:gravity="end" android:fontFamily="sans-serif" android:includeFontPadding="false" android:layout_weight="1" android:maxLines="4" android:ellipsize="end" android:textAlignment="viewEnd"/>
+         </LinearLayout>
+         <TextView android:id="@+id/subtitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone"/>
+       </LinearLayout>
+-      <include layout="@layout/include_stock_detail_extended_metrics" />
++      <include layout="@layout/include_stock_detail_extended_metrics"/>
+       <LinearLayout android:id="@+id/multiTimeframeSummary" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:orientation="vertical" android:background="@android:color/transparent" android:padding="0dp">
+         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:text="ÇOKLU ZAMAN DİLİMİ • TREND ÖZETİ" android:textColor="@color/green" android:textStyle="bold" android:textSize="14sp" android:visibility="gone"/>
+         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="0dp">
+-          <TextView android:id="@+id/trend5m" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:padding="8dp" android:background="@drawable/bg_stock_outline" android:text="5 DK • Bekleniyor" android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="12sp" android:minHeight="@dimen/sd_trend_card_height" android:gravity="center_vertical" android:includeFontPadding="false" android:contentDescription="Trend bilgisi; dokunarak dönem grafiğini aç" android:clickable="true" android:focusable="true" android:fontFamily="sans-serif-medium" android:lineSpacingExtra="1dp"/>
+-          <TextView android:id="@+id/trend15m" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="5dp" android:padding="8dp" android:background="@drawable/bg_stock_outline" android:text="10 DK • Bekleniyor" android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="12sp" android:minHeight="@dimen/sd_trend_card_height" android:gravity="center_vertical" android:includeFontPadding="false" android:contentDescription="Trend bilgisi; dokunarak dönem grafiğini aç" android:clickable="true" android:focusable="true" android:fontFamily="sans-serif-medium" android:lineSpacingExtra="1dp"/>
++          <TextView android:id="@+id/trend5m" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:padding="8dp" android:background="@drawable/bg_stock_outline" android:text="5 DK • Bekleniyor" android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="12sp" android:minHeight="@dimen/sd_trend_card_height" android:gravity="center_vertical" android:includeFontPadding="false" android:contentDescription="Trend bilgisi; dokunarak dönem grafiğini aç" android:clickable="true" android:focusable="true" android:fontFamily="sans-serif-medium" android:lineSpacingExtra="1dp" android:minLines="2" android:maxLines="4" android:ellipsize="end"/>
++          <TextView android:id="@+id/trend15m" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="5dp" android:padding="8dp" android:background="@drawable/bg_stock_outline" android:text="10 DK • Bekleniyor" android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="12sp" android:minHeight="@dimen/sd_trend_card_height" android:gravity="center_vertical" android:includeFontPadding="false" android:contentDescription="Trend bilgisi; dokunarak dönem grafiğini aç" android:clickable="true" android:focusable="true" android:fontFamily="sans-serif-medium" android:lineSpacingExtra="1dp" android:minLines="2" android:maxLines="4" android:ellipsize="end"/>
+         </LinearLayout>
+         <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:layout_marginTop="@dimen/sd_card_space">
+-          <TextView android:id="@+id/trend1h" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:padding="8dp" android:background="@drawable/bg_stock_outline" android:text="1 SAAT • Bekleniyor" android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="12sp" android:minHeight="@dimen/sd_trend_card_height" android:gravity="center_vertical" android:includeFontPadding="false" android:contentDescription="Trend bilgisi; dokunarak dönem grafiğini aç" android:clickable="true" android:focusable="true" android:fontFamily="sans-serif-medium" android:lineSpacingExtra="1dp"/>
+-          <TextView android:id="@+id/trend1d" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="5dp" android:padding="8dp" android:background="@drawable/bg_stock_outline" android:text="GÜNLÜK • Bekleniyor" android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="12sp" android:minHeight="@dimen/sd_trend_card_height" android:gravity="center_vertical" android:includeFontPadding="false" android:contentDescription="Trend bilgisi; dokunarak dönem grafiğini aç" android:clickable="true" android:focusable="true" android:fontFamily="sans-serif-medium" android:lineSpacingExtra="1dp"/>
++          <TextView android:id="@+id/trend1h" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:padding="8dp" android:background="@drawable/bg_stock_outline" android:text="1 SAAT • Bekleniyor" android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="12sp" android:minHeight="@dimen/sd_trend_card_height" android:gravity="center_vertical" android:includeFontPadding="false" android:contentDescription="Trend bilgisi; dokunarak dönem grafiğini aç" android:clickable="true" android:focusable="true" android:fontFamily="sans-serif-medium" android:lineSpacingExtra="1dp" android:minLines="2" android:maxLines="4" android:ellipsize="end"/>
++          <TextView android:id="@+id/trend1d" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="5dp" android:padding="8dp" android:background="@drawable/bg_stock_outline" android:text="GÜNLÜK • Bekleniyor" android:textColor="@color/text_primary" android:textStyle="bold" android:textSize="12sp" android:minHeight="@dimen/sd_trend_card_height" android:gravity="center_vertical" android:includeFontPadding="false" android:contentDescription="Trend bilgisi; dokunarak dönem grafiğini aç" android:clickable="true" android:focusable="true" android:fontFamily="sans-serif-medium" android:lineSpacingExtra="1dp" android:minLines="2" android:maxLines="4" android:ellipsize="end"/>
+         </LinearLayout>
+         <TextView android:id="@+id/timeframeConflict" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="6dp" android:text="Zaman dilimleri, doğrulanmış mum verisi geldikten sonra karşılaştırılır." android:textColor="@color/yellow" android:textSize="12sp" android:background="@drawable/bg_stock_warning" android:padding="8dp" android:includeFontPadding="false" android:fontFamily="sans-serif-medium" android:drawableStart="@drawable/ic_stock_detail_warning" android:drawablePadding="7dp" android:gravity="center_vertical"/>
+       </LinearLayout>
+@@ -153,8 +153,8 @@
+         </LinearLayout>
+         <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:id="@+id/planDisclaimer" android:text="Bu ekran yatırım tavsiyesi değildir. Veri doğrulanmadığında işleme giriş/çıkış önerisi verilmez." android:layout_marginTop="12dp" android:textSize="12sp" android:textColor="@color/text_secondary"/>
+       </LinearLayout>
+-      <include layout="@layout/include_stock_detail_extended_panels" />
+-      <include layout="@layout/include_stock_easy_explanation" />
++      <include layout="@layout/include_stock_detail_extended_panels"/>
++      <include layout="@layout/include_stock_easy_explanation"/>
+     </LinearLayout>
+   </ScrollView>
+   <include layout="@layout/include_stock_detail_bottom_nav"/>
+--- a/android-v6323/app/src/main/res/layout/item_scan_result.xml
++++ b/android-v6323/app/src/main/res/layout/item_scan_result.xml
+@@ -1,219 +1,52 @@
+-<?xml version="1.0" encoding="utf-8"?>
+-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+-    android:layout_width="match_parent"
+-    android:layout_height="wrap_content"
+-    android:layout_marginBottom="10dp"
+-    android:orientation="vertical"
+-    android:padding="14dp">
++<?xml version='1.0' encoding='UTF-8'?>
++<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginBottom="10dp" android:orientation="vertical" android:padding="14dp">
+ 
+-    <LinearLayout
+-        android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
+-        android:gravity="center_vertical"
+-        android:orientation="horizontal">
++    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:gravity="center_vertical" android:orientation="horizontal">
+ 
+-        <LinearLayout
+-            android:layout_width="0dp"
+-            android:layout_height="wrap_content"
+-            android:layout_weight="1"
+-            android:orientation="vertical">
++        <LinearLayout android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:orientation="vertical">
+ 
+-            <TextView
+-                android:id="@+id/company"
+-                android:layout_width="match_parent"
+-                android:layout_height="wrap_content"
+-                android:textColor="@color/text_primary"
+-                android:textSize="18sp"
+-                android:textStyle="bold"
+-                android:maxLines="2"
+-                android:ellipsize="none" />
++            <TextView android:id="@+id/company" android:layout_width="match_parent" android:layout_height="wrap_content" android:textColor="@color/text_primary" android:textSize="18sp" android:textStyle="bold" android:maxLines="2" android:ellipsize="end"/>
+ 
+-            <TextView
+-                android:id="@+id/symbol"
+-                android:layout_width="wrap_content"
+-                android:layout_height="wrap_content"
+-                android:layout_marginTop="2dp"
+-                android:textColor="@color/text_secondary"
+-                android:textSize="13sp"
+-                android:textStyle="bold"
+-                android:maxLines="1" />
++            <TextView android:id="@+id/symbol" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:textColor="@color/text_secondary" android:textSize="13sp" android:textStyle="bold" android:maxLines="2" android:ellipsize="end"/>
+ 
+-            <TextView
+-                android:id="@+id/priceMovement"
+-                android:layout_width="wrap_content"
+-                android:layout_height="wrap_content"
+-                android:layout_marginTop="3dp"
+-                android:textSize="14sp"
+-                android:textStyle="bold"
+-                android:maxLines="1" />
++            <TextView android:id="@+id/priceMovement" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="3dp" android:textSize="14sp" android:textStyle="bold" android:maxLines="2" android:ellipsize="end"/>
+         </LinearLayout>
+ 
+-        <TextView
+-            android:id="@+id/directionBadge"
+-            android:layout_width="wrap_content"
+-            android:layout_height="48dp"
+-            android:layout_marginStart="10dp"
+-            android:gravity="center"
+-            android:minWidth="92dp"
+-            android:paddingStart="14dp"
+-            android:paddingEnd="14dp"
+-            android:textSize="18sp"
+-            android:textStyle="bold" />
++        <TextView android:id="@+id/directionBadge" android:layout_width="wrap_content" android:layout_height="48dp" android:layout_marginStart="10dp" android:gravity="center" android:minWidth="78dp" android:paddingStart="7dp" android:paddingEnd="7dp" android:textSize="15sp" android:textStyle="bold" android:maxLines="2"/>
+     </LinearLayout>
+ 
+-    <LinearLayout
+-        android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
+-        android:layout_marginTop="10dp"
+-        android:gravity="center_vertical"
+-        android:orientation="horizontal">
++    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:gravity="center_vertical" android:orientation="horizontal">
+ 
+-        <TextView
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:text="@string/auto_text_5c84122afc"
+-            android:textColor="@color/text_secondary"
+-            android:textStyle="bold" />
++        <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="@string/auto_text_5c84122afc" android:textColor="@color/text_secondary" android:textStyle="bold"/>
+ 
+-        <ProgressBar
+-            android:id="@+id/strengthBar"
+-            style="?android:attr/progressBarStyleHorizontal"
+-            android:layout_width="0dp"
+-            android:layout_height="10dp"
+-            android:layout_marginStart="10dp"
+-            android:layout_marginEnd="8dp"
+-            android:layout_weight="1"
+-            android:max="100"
+-            android:progress="0" />
++        <ProgressBar android:id="@+id/strengthBar" style="?android:attr/progressBarStyleHorizontal" android:layout_width="0dp" android:layout_height="10dp" android:layout_marginStart="10dp" android:layout_marginEnd="8dp" android:layout_weight="1" android:max="100" android:progress="0"/>
+ 
+-        <TextView
+-            android:id="@+id/strengthValue"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:minWidth="72dp"
+-            android:gravity="end"
+-            android:textColor="@color/text_primary"
+-            android:textSize="16sp"
+-            android:textStyle="bold" />
++        <TextView android:id="@+id/strengthValue" android:layout_width="wrap_content" android:layout_height="wrap_content" android:minWidth="72dp" android:gravity="end" android:textColor="@color/text_primary" android:textSize="16sp" android:textStyle="bold"/>
+     </LinearLayout>
+ 
+-    <TextView
+-        android:id="@+id/strengthTier"
+-        android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
+-        android:layout_marginTop="4dp"
+-        android:textColor="@color/text_secondary"
+-        android:textSize="12sp" />
++    <TextView android:id="@+id/strengthTier" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="4dp" android:textColor="@color/text_secondary" android:textSize="12sp"/>
+ 
+-    <LinearLayout
+-        android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
+-        android:layout_marginTop="10dp"
+-        android:orientation="horizontal"
+-        android:weightSum="3">
++    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:orientation="horizontal" android:weightSum="3">
+ 
+-        <TextView
+-            android:id="@+id/technicalScore"
+-            android:layout_width="0dp"
+-            android:layout_height="wrap_content"
+-            android:layout_weight="1"
+-            android:layout_marginEnd="4dp"
+-            android:background="@drawable/bg_card"
+-            android:gravity="center"
+-            android:minHeight="62dp"
+-            android:padding="7dp"
+-            android:textColor="@color/text_primary"
+-            android:textSize="12sp" />
++        <TextView android:id="@+id/technicalScore" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginEnd="4dp" android:background="@drawable/bg_card" android:gravity="center" android:minHeight="62dp" android:padding="7dp" android:textColor="@color/text_primary" android:textSize="12sp"/>
+ 
+-        <TextView
+-            android:id="@+id/riskScore"
+-            android:layout_width="0dp"
+-            android:layout_height="wrap_content"
+-            android:layout_weight="1"
+-            android:layout_marginStart="4dp"
+-            android:layout_marginEnd="4dp"
+-            android:background="@drawable/bg_card"
+-            android:gravity="center"
+-            android:minHeight="62dp"
+-            android:padding="7dp"
+-            android:textColor="@color/text_primary"
+-            android:textSize="12sp" />
++        <TextView android:id="@+id/riskScore" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="4dp" android:layout_marginEnd="4dp" android:background="@drawable/bg_card" android:gravity="center" android:minHeight="62dp" android:padding="7dp" android:textColor="@color/text_primary" android:textSize="12sp"/>
+ 
+-        <TextView
+-            android:id="@+id/confidenceScore"
+-            android:layout_width="0dp"
+-            android:layout_height="wrap_content"
+-            android:layout_weight="1"
+-            android:layout_marginStart="4dp"
+-            android:background="@drawable/bg_card"
+-            android:gravity="center"
+-            android:minHeight="62dp"
+-            android:padding="7dp"
+-            android:textColor="@color/text_primary"
+-            android:textSize="12sp" />
++        <TextView android:id="@+id/confidenceScore" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_weight="1" android:layout_marginStart="4dp" android:background="@drawable/bg_card" android:gravity="center" android:minHeight="62dp" android:padding="7dp" android:textColor="@color/text_primary" android:textSize="12sp"/>
+     </LinearLayout>
+ 
+-    <LinearLayout
+-        android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
+-        android:layout_marginTop="10dp"
+-        android:gravity="center_vertical"
+-        android:orientation="horizontal">
++    <LinearLayout android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="10dp" android:gravity="center_vertical" android:orientation="horizontal">
+ 
+-        <TextView
+-            android:id="@+id/dataMode"
+-            android:layout_width="wrap_content"
+-            android:layout_height="wrap_content"
+-            android:background="@drawable/bg_chip"
+-            android:paddingStart="10dp"
+-            android:paddingTop="6dp"
+-            android:paddingEnd="10dp"
+-            android:paddingBottom="6dp"
+-            android:textColor="@color/text_primary"
+-            android:textStyle="bold" />
++        <TextView android:id="@+id/dataMode" android:layout_width="wrap_content" android:layout_height="wrap_content" android:background="@drawable/bg_chip" android:paddingStart="10dp" android:paddingTop="6dp" android:paddingEnd="10dp" android:paddingBottom="6dp" android:textColor="@color/text_primary" android:textStyle="bold"/>
+ 
+-        <TextView
+-            android:id="@+id/source"
+-            android:layout_width="0dp"
+-            android:layout_height="wrap_content"
+-            android:layout_marginStart="8dp"
+-            android:layout_weight="1"
+-            android:textColor="@color/text_secondary"
+-            android:textSize="12sp"
+-            android:maxLines="2" />
++        <TextView android:id="@+id/source" android:layout_width="0dp" android:layout_height="wrap_content" android:layout_marginStart="8dp" android:layout_weight="1" android:textColor="@color/text_secondary" android:textSize="12sp" android:maxLines="2"/>
+     </LinearLayout>
+ 
+-    <TextView
+-        android:id="@+id/timeInfo"
+-        android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
+-        android:layout_marginTop="8dp"
+-        android:background="@drawable/bg_card"
+-        android:padding="9dp"
+-        android:textColor="@color/text_secondary"
+-        android:textSize="12sp" />
++    <TextView android:id="@+id/timeInfo" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="8dp" android:background="@drawable/bg_card" android:padding="9dp" android:textColor="@color/text_secondary" android:textSize="12sp"/>
+ 
+-    <TextView
+-        android:id="@+id/levels"
+-        android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
+-        android:layout_marginTop="7dp"
+-        android:textColor="@color/yellow"
+-        android:textSize="12sp" />
++    <TextView android:id="@+id/levels" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:textColor="@color/yellow" android:textSize="12sp"/>
+ 
+-    <TextView
+-        android:id="@+id/coverage"
+-        android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
+-        android:layout_marginTop="7dp"
+-        android:textColor="@color/text_secondary"
+-        android:textSize="12sp" />
++    <TextView android:id="@+id/coverage" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:textColor="@color/text_secondary" android:textSize="12sp"/>
+ 
+-    <TextView
+-        android:id="@+id/reason"
+-        android:layout_width="match_parent"
+-        android:layout_height="wrap_content"
+-        android:layout_marginTop="7dp"
+-        android:textColor="@color/text_primary"
+-        android:textSize="12sp" />
++    <TextView android:id="@+id/reason" android:layout_width="match_parent" android:layout_height="wrap_content" android:layout_marginTop="7dp" android:textColor="@color/text_primary" android:textSize="12sp"/>
+ </LinearLayout>
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/ScanResultsAdapter.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/ScanResultsAdapter.kt
+@@ -62,7 +62,10 @@
+         val symbol = item.symbol.trim().uppercase(Locale.ROOT)
+         val company = item.companyName?.trim().takeUnless { it.isNullOrBlank() } ?: symbol
+         val delayedObservation = item.dataMode != DataMode.REALTIME || !item.isRealtime
+-        val direction = if (delayedObservation) "TEKNİK İZLEME" else item.direction.trim().uppercase(Locale.ROOT)
++        val verifiedTrade = !delayedObservation && item.signalValidity == SignalValidity.VALID &&
++            item.decisionState == DecisionState.VERIFIED_OPPORTUNITY && item.publicationAssessment?.eligible == true &&
++            item.riskPlan != null
++        val direction = if (verifiedTrade) item.direction.trim().uppercase(Locale.ROOT) else "TEKNİK İZLEME"
+         val score = if (delayedObservation) item.score.coerceIn(0, 100) else item.finalSignalScore.coerceIn(0, 100)
+         val trendStyle = OpportunityTrendPresentation.from(item).trend
+ 
+@@ -71,17 +74,17 @@
+         holder.symbol.text = "$symbol — $timeframeLabel FIRSAT"
+         bindPriceMovement(holder.priceMovement, tr.borsatakip.v5.data.StockQuotePolicy.price(item), tr.borsatakip.v5.data.StockQuotePolicy.change(item))
+         val directionLabel = when {
+-            delayedObservation -> "TEKNİK İZLEME"
++            !verifiedTrade -> "TEKNİK İZLEME"
+             direction.equals("LONG", true) -> "▲ AL ADAYI"
+             direction.equals("SHORT", true) -> "▼ SAT ADAYI"
+             else -> "İZLE"
+         }
+         holder.direction.text = directionLabel
+-        holder.direction.contentDescription = if (delayedObservation) "Gecikmeli teknik izleme; AL/SAT sinyali yok" else "Sinyal yönü: $directionLabel"
++        holder.direction.contentDescription = if (!verifiedTrade) "Teknik izleme; doğrulanmış AL/SAT sinyali yok" else "Sinyal yönü: $directionLabel"
+         holder.strengthBar.progress = score
+         holder.strengthValue.text = "$score/100"
+-        holder.strengthTier.text = if (delayedObservation) {
+-            "TREND: ${trendStyle.arrow} ${trendStyle.label} • TEKNİK PUAN • GECİKMELİ VERİ • AL/SAT YOK"
++        holder.strengthTier.text = if (!verifiedTrade) {
++            "TREND: ${trendStyle.arrow} ${trendStyle.label} • SADECE TEKNİK İZLEME • AL/SAT YOK"
+         } else {
+             "TREND: ${trendStyle.arrow} ${trendStyle.label} • ${strengthLabel(score)} • ${validityLabel(item)}"
+         }
+@@ -125,11 +128,11 @@
+             .take(4)
+             .toList()
+         holder.reason.text = buildString {
+-            append(if (delayedObservation) "Teknik analiz özeti: " else "Sinyal özeti: ")
+-            append(if (delayedObservation) item.signalValidityReason else if (factors.isEmpty()) item.signalValidityReason else factors.joinToString(" • "))
+-        }
+-
+-        applyVisuals(holder, direction, delayedObservation, trendStyle)
++            append(if (!verifiedTrade) "Teknik izleme özeti: " else "Sinyal özeti: ")
++            append(if (!verifiedTrade) item.signalValidityReason else if (factors.isEmpty()) item.signalValidityReason else factors.joinToString(" • "))
++        }
++
++        applyVisuals(holder, direction, !verifiedTrade, trendStyle)
+         holder.itemView.setOnClickListener { click(item) }
+     }
+ 
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/scan/BistScanner.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/scan/BistScanner.kt
+@@ -342,7 +342,9 @@
+                 scanRun = run(ScanRunStatus.STARTED),
+                 timeframeLabel = timeframeLabel()
+             ))
+-            val ranked = if (mode == BistScanMode.DELAYED_ANALYSIS) OpportunityRankingPolicy.sortWatchOnly(optimized) else OpportunityRankingPolicy.sort(optimized)
++            // Defense in depth: no MTF/optimization result can bypass the live publication gate.
++            val verifiedForPublication = optimized.map(OpportunityPublicationPolicy::enforceVerifiedPublication)
++            val ranked = if (mode == BistScanMode.DELAYED_ANALYSIS) OpportunityRankingPolicy.sortWatchOnly(verifiedForPublication) else OpportunityRankingPolicy.sort(verifiedForPublication)
+             val completed = System.currentTimeMillis()
+             val traced = ranked.map { opportunity ->
+                 opportunity.copy(
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/analysis/OpportunityPublicationPolicy.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/analysis/OpportunityPublicationPolicy.kt
+@@ -9,6 +9,30 @@
+  * Gerçek zaman bütünlüğünden geçmeyen teknik analizler işlem sinyali gibi yayınlanmaz.
+  */
+ object OpportunityPublicationPolicy {
++    /** The last gate, after MTF and strategy optimization: WATCH rows never have executable fields. */
++    fun enforceVerifiedPublication(item: Opportunity): Opportunity {
++        val published = item.signalValidity == SignalValidity.VALID &&
++            item.decisionState == DecisionState.VERIFIED_OPPORTUNITY &&
++            item.direction.uppercase(java.util.Locale.ROOT) in setOf("LONG", "SHORT") &&
++            item.isRealtime && item.dataMode == tr.borsatakip.v5.model.DataMode.REALTIME &&
++            item.publicationAssessment?.eligible == true && item.riskPlan != null
++        if (published) return item
++        return item.copy(
++            direction = if (item.dataMode == tr.borsatakip.v5.model.DataMode.DELAYED ||
++                item.dataMode == tr.borsatakip.v5.model.DataMode.EOD) "İZLEME" else "NEUTRAL",
++            signalValidity = if (item.signalValidity == SignalValidity.VALID) SignalValidity.WATCH else item.signalValidity,
++            decisionState = when (item.decisionState) {
++                DecisionState.INSUFFICIENT_DATA, DecisionState.REJECTED -> item.decisionState
++                else -> DecisionState.WATCH
++            },
++            finalSignalScore = 0, signalScore = 0, longScore = 0, shortScore = 0,
++            rankingScore = 0,
++            rankingStatus = tr.borsatakip.v5.model.RankingStatus.INVALID,
++            riskPlan = null,
++            snapshot = item.snapshot?.copy(finalSignalScore = 0),
++            scoreBreakdown = item.scoreBreakdown + "PUB_GATE=WATCH_ONLY_NON_VERIFIED"
++        )
++    }
+     fun delayedObservation(opportunity: Opportunity, integrityReason: String): Opportunity {
+         val note = "GECİKMELİ/GÜNLÜK VERİ • AL/SAT SİNYALİ ÜRETİLMEDİ. $integrityReason"
+         return opportunity.copy(
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/analysis/OpportunityFilterPolicy.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/analysis/OpportunityFilterPolicy.kt
+@@ -21,6 +21,7 @@
+                 .thenBy { it.symbol }
+         )
+         val actionable = sorted.filter { it.signalValidity == SignalValidity.VALID || it.signalValidity == SignalValidity.WATCH }
++        val verifiedOnly = sorted.filter { it.signalValidity == SignalValidity.VALID }
+         return when (filter) {
+             OpportunityFilter.ALL -> sorted
+             OpportunityFilter.A_CLASS -> actionable.filter { Opportunity2Presentation.from(it).klass == "A SINIFI" }
+@@ -36,9 +37,9 @@
+                     ((p > t.ema20 && t.ema20 > t.ema50 && t.ema50 > t.ema200) ||
+                      (p < t.ema20 && t.ema20 < t.ema50 && t.ema50 < t.ema200))
+             }
+-            OpportunityFilter.LONG -> actionable.filter { it.direction.equals("LONG", true) }
+-            OpportunityFilter.SHORT -> actionable.filter { it.direction.equals("SHORT", true) }
+-            OpportunityFilter.HIGH_POWER -> actionable.filter { it.finalSignalScore >= 85 }
++            OpportunityFilter.LONG -> verifiedOnly.filter { it.direction.equals("LONG", true) }
++            OpportunityFilter.SHORT -> verifiedOnly.filter { it.direction.equals("SHORT", true) }
++            OpportunityFilter.HIGH_POWER -> verifiedOnly.filter { it.finalSignalScore >= 85 }
+         }
+     }
+ }
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/analysis/OpportunityEngine.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/analysis/OpportunityEngine.kt
+@@ -47,8 +47,11 @@
+                 x.open <= 0.0 || x.high <= 0.0 || x.low <= 0.0 || x.close <= 0.0 ||
+                 x.high < max(x.open, x.close) || x.low > min(x.open, x.close) || x.volume < 0.0
+         }
+-        // Invalid OHLCV must never be silently removed and converted into a seemingly usable signal.
+-        if (hasMalformedCandle) return null
++        // Reject duplicate, descending and future-dated OHLCV. Sorting and deduplicating would
++        // conceal a broken provider stream and can turn a future candle into a false trade signal.
++        val nowWall = System.currentTimeMillis()
++        val chronological = rawCandles.zipWithNext().all { (previous, next) -> previous.timestamp < next.timestamp }
++        if (hasMalformedCandle || !chronological || rawCandles.any { it.timestamp > nowWall + 15_000L }) return null
+ 
+         val c = CandleReadinessPolicy.closedCandles(stock)
+         val requiredBars = CandleReadinessPolicy.requiredClosedBars()
