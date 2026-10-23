@@ -1,0 +1,37 @@
+name: Diagnostic failure intake
+
+# This is the non-AI intake stage. Automatic repair is not enabled by this file.
+on:
+  workflow_run:
+    workflows:
+      - "Android Build"
+      - "Android Diagnostic Build"
+      - "Build 668 APK"
+    types: [completed]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  report-failure:
+    if: ${{ github.event.workflow_run.conclusion == 'failure' }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Create or update diagnostic issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.event.workflow_run.id }}
+          RUN_URL: ${{ github.event.workflow_run.html_url }}
+          RUN_NAME: ${{ github.event.workflow_run.name }}
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          title="CI diagnostic failure: run ${RUN_ID}"
+          body=$(printf 'The Android CI workflow failed.\n\nWorkflow: %s\nRun: %s\nCommit: %s\nBranch: %s\n\nReview logs and reproduce before proposing a fix. No automatic merge is authorized.\n' "$RUN_NAME" "$RUN_URL" "$HEAD_SHA" "$HEAD_BRANCH")
+          if ! gh issue list --state all --search "in:title ${title}" --json title --jq '.[].title' | grep -Fxq "$title"; then
+            gh issue create --title "$title" --body "$body"
+          fi
