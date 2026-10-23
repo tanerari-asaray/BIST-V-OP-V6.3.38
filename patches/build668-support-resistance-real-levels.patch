@@ -1,0 +1,247 @@
+--- /dev/null
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/analysis/ChartSupportResistance.kt
+@@ -0,0 +1,32 @@
++package tr.borsatakip.v5.analysis
++
++import tr.borsatakip.v5.model.Candle
++
++/** Real observed levels, for chart display only — never a LONG/SHORT instruction. */
++object ChartSupportResistance {
++    enum class Evidence { CONFIRMED_PIVOT, RECENT_RANGE }
++    data class Level(val price: Double, val evidence: Evidence)
++    data class Levels(val support: Level?, val resistance: Level?, val bandHalfWidth: Double)
++
++    /** Caller passes only closed OHLCV bars. No forward-looking bar may be used. */
++    fun fromConfirmed(confirmed: List<Candle>): Levels {
++        val bars = OhlcvResampler.sanitize(confirmed)
++        if (bars.size < 12) return Levels(null, null, 0.0)
++        val price = bars.last().close
++        if (!price.isFinite() || price <= 0.0) return Levels(null, null, 0.0)
++        val pivots = ExtendedStockEvidence.ladder(bars, price)
++        val history = bars.dropLast(1).takeLast(40)
++        if (history.size < 10) return Levels(null, null, 0.0)
++        // Only observed OHLCV boundaries, and distinguish them from confirmed swing pivots.
++        val floor = history.minOf { it.low }.takeIf { it.isFinite() && it > 0.0 && it < price }
++        val ceiling = history.maxOf { it.high }.takeIf { it.isFinite() && it > price }
++        val support = pivots.supports.firstOrNull()?.let { Level(it, Evidence.CONFIRMED_PIVOT) }
++            ?: floor?.let { Level(it, Evidence.RECENT_RANGE) }
++        val resistance = pivots.resistances.firstOrNull()?.let { Level(it, Evidence.CONFIRMED_PIVOT) }
++            ?: ceiling?.let { Level(it, Evidence.RECENT_RANGE) }
++        // Width is derived from observed candle ranges; it is illustrative, not a price target.
++        val averageRange = bars.takeLast(14).map { (it.high - it.low).coerceAtLeast(0.0) }.average()
++        val halfWidth = (averageRange * 0.15).coerceIn(price * 0.0005, price * 0.005)
++        return Levels(support, resistance, halfWidth)
++    }
++}
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/PriceChartView.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/PriceChartView.kt
+@@ -11,6 +11,7 @@
+ import android.view.ScaleGestureDetector
+ import android.view.View
+ import tr.borsatakip.v5.analysis.LinearTrendAnalyzer
++import tr.borsatakip.v5.analysis.ChartSupportResistance
+ import tr.borsatakip.v5.analysis.ChartIndicators
+ import tr.borsatakip.v5.analysis.OhlcvResampler
+ import tr.borsatakip.v5.model.Candle
+@@ -28,6 +29,7 @@
+     var candles: List<Candle> = emptyList()
+         set(value) {
+             field = OhlcvResampler.sanitize(value)
++            supportResistance = null // Never retain another symbol/timeframe's levels.
+             series = ChartIndicators.calculate(field, intraday)
+             legacy20 = ChartIndicators.ema(field.map { it.close }, 20)
+             legacy50 = ChartIndicators.ema(field.map { it.close }, 50)
+@@ -70,6 +72,8 @@
+         set(value) { field = value; invalidate() }
+ 
+     var trendAnalysis: LinearTrendAnalyzer.Result? = null
++        set(value) { field = value; invalidate() }
++    var supportResistance: ChartSupportResistance.Levels? = null
+         set(value) { field = value; invalidate() }
+ 
+     var timeframeLabel: String = ""
+@@ -215,6 +219,12 @@
+     private val mainTrendPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(224, 224, 224); strokeWidth = 1.5f; style = Paint.Style.STROKE }
+     private val supportTrendPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(0, 200, 83); strokeWidth = 2f; style = Paint.Style.STROKE }
+     private val resistanceTrendPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(255, 82, 82); strokeWidth = 2f; style = Paint.Style.STROKE }
++    private val supportLevelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(12, 213, 113); strokeWidth = 2.4f; style = Paint.Style.STROKE }
++    private val resistanceLevelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(255, 84, 84); strokeWidth = 2.4f; style = Paint.Style.STROKE }
++    private val supportBandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(44, 0, 214, 117); style = Paint.Style.FILL }
++    private val resistanceBandPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(44, 255, 77, 80); style = Paint.Style.FILL }
++    private val supportLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(102, 255, 170); textSize = 9f * fontUnit; isFakeBoldText = true }
++    private val resistanceLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(255, 155, 147); textSize = 9f * fontUnit; isFakeBoldText = true }
+     private val currentPricePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(0, 224, 128); strokeWidth = 1.5f; style = Paint.Style.STROKE }
+     private val historicalPricePaint = Paint(currentPricePaint).apply { color = Color.rgb(255, 195, 75) }
+     private val historicalText = Paint(smallText).apply { color = Color.rgb(255, 195, 75) }
+@@ -345,6 +355,12 @@
+                 analysis?.support?.let { line -> (start until start + visible.size).forEach { add(line.valueAt(it)) } }
+                 analysis?.resistance?.let { line -> (start until start + visible.size).forEach { add(line.valueAt(it)) } }
+             }
++            // Nearby observed levels share the candle scale without flattening the entire chart.
++            val visibleLow = visible.minOf { it.low }
++            val visibleHigh = visible.maxOf { it.high }
++            val headroom = (visibleHigh - visibleLow).coerceAtLeast(visibleHigh * 0.002) * 0.18
++            supportResistance?.support?.price?.takeIf { it in (visibleLow-headroom)..(visibleHigh+headroom) }?.let(::add)
++            supportResistance?.resistance?.price?.takeIf { it in (visibleLow-headroom)..(visibleHigh+headroom) }?.let(::add)
+             if (markerVisible) add(markerPrice!!)
+         }.filter { it.isFinite() && it > 0.0 }
+         val rawMin = indicatorValues.minOrNull() ?: return
+@@ -358,6 +374,8 @@
+         val step = if (visible.size <= 1) (right - left) else (right - left) / (visible.size - 1)
+         val bodyWidth = max(2f, min(12f, step * 0.55f))
+         if (showChannel) drawDynamicChannel(canvas, all, start, visible.size, left, right, ::y)
++        // Horizontal support/resistance overlays are independent of sloped regression lines.
++        drawVerifiedLevels(canvas, left, right, top, bottom, minV, maxV, ::y)
+         visible.forEachIndexed { i, k ->
+             val x = if (visible.size <= 1) (left + right) / 2f else left + step * i
+             val p = if (k.close >= k.open) up else down
+@@ -411,6 +429,30 @@
+             canvas.drawPath(marker, signalPaint)
+             signalPaint.style = Paint.Style.STROKE
+         }
++    }
++
++    private fun drawVerifiedLevels(canvas: Canvas, left: Float, right: Float, top: Float, bottom: Float,
++                                   minPrice: Double, maxPrice: Double, y: (Double) -> Float) {
++        val levels = supportResistance ?: return
++        fun render(level: ChartSupportResistance.Level?, line: Paint, band: Paint, text: Paint, prefix: String) {
++            val value = level?.price ?: return
++            if (!value.isFinite() || value <= 0.0 || value !in minPrice..maxPrice) return
++            val middle = y(value)
++            val upper = y(value + levels.bandHalfWidth).coerceIn(top, bottom)
++            val lower = y(value - levels.bandHalfWidth).coerceIn(top, bottom)
++            canvas.save()
++            canvas.clipRect(left, top, right, bottom)
++            canvas.drawRect(left, min(upper, lower), right, max(upper, lower), band)
++            canvas.drawLine(left, middle, right, middle, line)
++            val kind = if (level.evidence == ChartSupportResistance.Evidence.CONFIRMED_PIVOT) "pivot" else "40 mum sınırı"
++            val label = "$prefix ${"%.2f".format(value)} · $kind"
++            val textY = (middle - 5f).coerceIn(top + text.textSize, bottom - 3f)
++            // Label stays in the plot and never intrudes into the right-hand price axis.
++            if (text.measureText(label) < right - left - 8f) canvas.drawText(label, left + 4f, textY, text)
++            canvas.restore()
++        }
++        render(levels.resistance, resistanceLevelPaint, resistanceBandPaint, resistanceLabelPaint, "DİRENÇ")
++        render(levels.support, supportLevelPaint, supportBandPaint, supportLabelPaint, "DESTEK")
+     }
+ 
+     private fun drawDynamicChannel(canvas: Canvas, all: List<Candle>, start: Int, count: Int, left: Float, right: Float, y: (Double) -> Float) {
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt
+@@ -27,6 +27,7 @@
+ import tr.borsatakip.v5.scan.FundamentalValuationEngine
+ import android.widget.FrameLayout
+ import tr.borsatakip.v5.analysis.LinearTrendAnalyzer
++import tr.borsatakip.v5.analysis.ChartSupportResistance
+ import tr.borsatakip.v5.data.favorites.FavoriteRepository
+ import tr.borsatakip.v5.data.ChartHistoryRepository
+ import tr.borsatakip.v5.data.YahooFallbackProvider
+@@ -643,6 +644,7 @@
+                 if (chartUsingDelayedData) { chart.signalPrice = null; chart.signalTime = null }
+                 chart.timeframeLabel = timeframe.label
+                 chart.candles = candles
++                chart.supportResistance = ChartSupportResistance.fromConfirmed(candles.dropLast(1))
+                 chart.trendAnalysis = trend
+                 pendingChartViewState?.let { chart.restoreDisplayState(it) }; pendingChartViewState = null
+                 chartStatus.text = when {
+@@ -883,12 +885,18 @@
+         val last = candles.dropLast(1).lastOrNull()
+         if (last == null || result.main == null) { clearSelectedAnalysis(); return }
+         val price = last.close
+-        val support = result.supportNow?.takeIf { it.isFinite() && it > 0.0 && it <= price }
+-        val resistance = result.resistanceNow?.takeIf { it.isFinite() && it >= price }
++        val verified = chart.supportResistance
++        val support = verified?.support?.price?.takeIf { it < price }
++        val resistance = verified?.resistance?.price?.takeIf { it > price }
+         fun distance(level: Double): String = String.format(Locale("tr", "TR"), "%%%.1f", kotlin.math.abs((price - level) / price * 100))
+-        val sText = support?.let { "Destek\n${money(it)} • ${distance(it)} mesafe\n${result.support?.contactCount ?: 0} doğrulanan temas" }
++        fun evidenceLabel(evidence: ChartSupportResistance.Evidence?): String = when (evidence) {
++            ChartSupportResistance.Evidence.CONFIRMED_PIVOT -> "Doğrulanmış dönüş seviyesi"
++            ChartSupportResistance.Evidence.RECENT_RANGE -> "Önceki 40 mumun sınırı • pivot değil"
++            null -> "Seviye doğrulanamadı"
++        }
++        val sText = support?.let { "Destek\n${money(it)} • ${distance(it)} mesafe\n${evidenceLabel(verified?.support?.evidence)}" }
+             ?: "Destek\nBu dönemde doğrulanamadı"
+-        val rText = resistance?.let { "Direnç\n${money(it)} • ${distance(it)} mesafe\n${result.resistance?.contactCount ?: 0} doğrulanan temas" }
++        val rText = resistance?.let { "Direnç\n${money(it)} • ${distance(it)} mesafe\n${evidenceLabel(verified?.resistance?.evidence)}" }
+             ?: "Direnç\nBu dönemde doğrulanamadı"
+         for (id in listOf(R.id.graphSupport, R.id.supportDetail)) findViewById<TextView>(id).text = sText
+         for (id in listOf(R.id.graphResistance, R.id.resistanceDetail)) findViewById<TextView>(id).text = rText
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/FullscreenChartActivity.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/FullscreenChartActivity.kt
+@@ -32,6 +32,7 @@
+ import kotlinx.coroutines.withTimeout
+ import tr.borsatakip.v5.R
+ import tr.borsatakip.v5.analysis.ChartIndicators
++import tr.borsatakip.v5.analysis.ChartSupportResistance
+ import tr.borsatakip.v5.analysis.ChartTimeframe
+ import tr.borsatakip.v5.analysis.OhlcvResampler
+ import tr.borsatakip.v5.analysis.ReadableStockAnalysis
+@@ -373,6 +374,7 @@
+         chart.intraday = !period.daily
+         chart.timeframeLabel = period.label
+         chart.candles = state.candles
++        chart.supportResistance = ChartSupportResistance.fromConfirmed(state.candles.dropLast(1))
+         chart.signalPrice = null; chart.signalTime = null; chart.trendAnalysis = null
+         heading.text = "${symbol.ifBlank { "Grafik" }} · ${if (market == "VIOP") "VİOP" else "BIST"} · ${period.label} ▾"
+         periodButtons.forEach { (tf, button) -> button.alpha = if (tf == period) 1f else 0.55f }
+--- /dev/null
++++ b/android-v6323/app/src/test/java/tr/borsatakip/v5/analysis/ChartSupportResistanceOverlayTest.kt
+@@ -0,0 +1,57 @@
++package tr.borsatakip.v5.analysis
++
++import org.junit.Assert.assertEquals
++import org.junit.Assert.assertNull
++import org.junit.Assert.assertNotNull
++import org.junit.Assert.assertTrue
++import org.junit.Test
++import tr.borsatakip.v5.model.Candle
++import java.io.File
++
++class ChartSupportResistanceOverlayTest {
++    private fun bar(i: Int, close: Double = 100.0, high: Double = 106.0, low: Double = 94.0) =
++        Candle(1_786_100_000_000L + i * 300_000L, close, high, low, close, 1000.0)
++
++    @Test fun noVerifiedHistoryMeansNoSupportOrResistance() {
++        val levels = ChartSupportResistance.fromConfirmed((0 until 6).map { bar(it) })
++        assertNull(levels.support)
++        assertNull(levels.resistance)
++    }
++
++    @Test fun horizontalLevelsExistEvenWhenRegressionCannotGiveSlopedSupport() {
++        val candles = (0 until 50).map { i ->
++            bar(i, 100.0, if (i % 8 == 2) 110.0 else 103.0,
++                if (i % 8 == 5) 90.0 else 97.0)
++        }
++        val levels = ChartSupportResistance.fromConfirmed(candles)
++        assertNotNull(levels.support)
++        assertNotNull(levels.resistance)
++        assertTrue(levels.support!!.price < 100.0)
++        assertTrue(levels.resistance!!.price > 100.0)
++        assertEquals(ChartSupportResistance.Evidence.CONFIRMED_PIVOT, levels.support!!.evidence)
++        assertEquals(ChartSupportResistance.Evidence.CONFIRMED_PIVOT, levels.resistance!!.evidence)
++    }
++
++    @Test fun monotonicHistoryDoesNotManufactureFutureResistance() {
++        val candles = (0 until 60).map { i ->
++            val price = 70.0 + i
++            bar(i, price, price + 0.4, price - 0.4)
++        }
++        val levels = ChartSupportResistance.fromConfirmed(candles)
++        assertNotNull(levels.support)
++        assertNull(levels.resistance)
++        assertEquals(ChartSupportResistance.Evidence.RECENT_RANGE, levels.support!!.evidence)
++    }
++
++    @Test fun supportResistanceRenderingUsedByBothChartActivities() {
++        val path = "src/main/java/tr/borsatakip/v5/ui/"
++        val view = File(path + "PriceChartView.kt").readText()
++        val stock = File(path + "StockDetailActivity.kt").readText()
++        val fullscreen = File(path + "FullscreenChartActivity.kt").readText()
++        assertTrue(view.contains("drawVerifiedLevels(canvas"))
++        assertTrue(view.contains("supportBandPaint"))
++        assertTrue(view.contains("resistanceBandPaint"))
++        assertTrue(stock.contains("ChartSupportResistance.fromConfirmed(candles.dropLast(1))"))
++        assertTrue(fullscreen.contains("ChartSupportResistance.fromConfirmed(state.candles.dropLast(1))"))
++    }
++}

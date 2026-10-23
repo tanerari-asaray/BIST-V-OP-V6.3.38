@@ -1,0 +1,106 @@
+--- a/android-v6323/app/src/main/res/layout/activity_technical_analysis.xml
++++ b/android-v6323/app/src/main/res/layout/activity_technical_analysis.xml
+@@ -35,17 +35,44 @@
+                 <Button
+                     android:id="@+id/techTabIndicators"
+                     style="@style/FilterButton"
++                    android:layout_height="64dp"
++                    android:minHeight="64dp"
++                    android:gravity="center"
++                    android:maxLines="2"
++                    android:includeFontPadding="false"
++                    android:autoSizeTextType="uniform"
++                    android:autoSizeMinTextSize="10sp"
++                    android:autoSizeMaxTextSize="11sp"
++                    android:autoSizeStepGranularity="1sp"
+                     android:text="@string/auto_text_52b2976ca4" />
+ 
+                 <Button
+                     android:id="@+id/techTabPattern"
+                     style="@style/FilterButton"
++                    android:layout_height="64dp"
++                    android:minHeight="64dp"
++                    android:gravity="center"
++                    android:maxLines="2"
++                    android:includeFontPadding="false"
++                    android:autoSizeTextType="uniform"
++                    android:autoSizeMinTextSize="10sp"
++                    android:autoSizeMaxTextSize="11sp"
++                    android:autoSizeStepGranularity="1sp"
+                     android:layout_marginHorizontal="6dp"
+                     android:text="@string/auto_text_50ad06abda" />
+ 
+                 <Button
+                     android:id="@+id/techTabLevels"
+                     style="@style/FilterButton"
++                    android:layout_height="64dp"
++                    android:minHeight="64dp"
++                    android:gravity="center"
++                    android:maxLines="2"
++                    android:includeFontPadding="false"
++                    android:autoSizeTextType="uniform"
++                    android:autoSizeMinTextSize="10sp"
++                    android:autoSizeMaxTextSize="11sp"
++                    android:autoSizeStepGranularity="1sp"
+                     android:text="@string/auto_text_ab6a9ee166" />
+             </LinearLayout>
+ 
+--- a/android-v6323/app/src/main/res/layout/activity_stock_detail.xml
++++ b/android-v6323/app/src/main/res/layout/activity_stock_detail.xml
+@@ -16,7 +16,7 @@
+             <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:id="@+id/quotePrice" android:text="— TL" android:textSize="@dimen/sd_stock_price_size" android:textStyle="bold" android:textColor="@color/white" android:includeFontPadding="false" android:fontFamily="sans-serif" android:autoSizeTextType="uniform" android:autoSizeMinTextSize="18sp" android:autoSizeMaxTextSize="36sp" android:autoSizeStepGranularity="1sp" android:maxLines="1"/>
+             <TextView android:layout_width="match_parent" android:layout_height="wrap_content" android:id="@+id/quoteChange" android:text="Günlük değişim: —" android:textSize="11sp" android:textColor="@color/text_secondary" android:fontFamily="sans-serif" android:includeFontPadding="false" android:maxLines="2" android:ellipsize="end"/>
+           </LinearLayout>
+-          <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:id="@+id/quoteSource" android:text="VERİ BEKLENİYOR&#10;Kaynak: —" android:textSize="11sp" android:textColor="@color/yellow" android:gravity="end" android:fontFamily="sans-serif" android:includeFontPadding="false" android:layout_weight="1" android:maxLines="4" android:ellipsize="end" android:textAlignment="viewEnd"/>
++          <TextView android:layout_width="0dp" android:layout_height="wrap_content" android:id="@+id/quoteSource" android:text="VERİ BEKLENİYOR&#10;Kaynak: —" android:textSize="11sp" android:textColor="@color/yellow" android:gravity="end" android:fontFamily="sans-serif" android:includeFontPadding="false" android:layout_weight="1" android:maxLines="5" android:ellipsize="end" android:textAlignment="viewEnd"/>
+         </LinearLayout>
+         <TextView android:id="@+id/subtitle" android:layout_width="match_parent" android:layout_height="wrap_content" android:visibility="gone"/>
+       </LinearLayout>
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt
+@@ -688,7 +688,11 @@
+             else -> "ZAMAN DOĞRULANAMADI"
+         }
+         findViewById<TextView>(R.id.dataBadge).text = state
+-        findViewById<TextView>(R.id.quoteSource).text = "$state\n${source.take(30)}" +
++        // Keep the source recognizable without clipping the word GECİKMELİ mid-character.
++        // The freshness badge already states whether this quote is delayed or stale.
++        val provider = source.substringBefore(" • ").substringBefore(" · ").trim()
++            .ifEmpty { "Kaynak bilinmiyor" }
++        findViewById<TextView>(R.id.quoteSource).text = "$state\nKaynak: $provider" +
+             if (timestamp > 0L) "\n${SimpleDateFormat("HH:mm", Locale("tr", "TR")).format(Date(timestamp))}" else ""
+     }
+ 
+--- a/android-v6323/app/src/test/java/tr/borsatakip/v5/analysis/Build668LargeFontOverflowContractTest.kt
++++ b/android-v6323/app/src/test/java/tr/borsatakip/v5/analysis/Build668LargeFontOverflowContractTest.kt
+@@ -0,0 +1,30 @@
++package tr.borsatakip.v5.analysis
++
++import org.junit.Assert.*
++import org.junit.Test
++import java.io.File
++
++/** Guards visual fixes verified on Android 15 at 360dp width and 1.3x font scale. */
++class Build668LargeFontOverflowContractTest {
++    private val technical by lazy { File("src/main/res/layout/activity_technical_analysis.xml").readText() }
++    private val stockLayout by lazy { File("src/main/res/layout/activity_stock_detail.xml").readText() }
++    private val stockActivity by lazy { File("src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt").readText() }
++
++    @Test fun technicalTabsHaveRoomForTwoLinesAtLargeFontScale() {
++        for (id in listOf("techTabIndicators", "techTabPattern", "techTabLevels")) {
++            val section = technical.substringAfter("android:id=\"@+id/$id\"").substringBefore("android:text=")
++            assertTrue("$id must fit two lines", section.contains("android:layout_height=\"64dp\""))
++            assertTrue("$id must allow two lines", section.contains("android:maxLines=\"2\""))
++            assertTrue("$id must center text", section.contains("android:gravity=\"center\""))
++        }
++    }
++
++    @Test fun delayedSourceNameIsNotTruncatedMidWord() {
++        assertFalse("Do not cut Yahoo Finance metadata mid-word", stockActivity.contains("source.take(30)"))
++        assertTrue(stockActivity.contains("source.substringBefore(\" • \")"))
++        assertTrue(stockActivity.contains("Kaynak: \$provider"))
++        assertTrue(stockLayout.contains("android:id=\"@+id/quoteSource\""))
++        val source = stockLayout.substringAfter("android:id=\"@+id/quoteSource\"").substringBefore("</LinearLayout>")
++        assertTrue(source.contains("android:maxLines=\"5\""))
++    }
++}
