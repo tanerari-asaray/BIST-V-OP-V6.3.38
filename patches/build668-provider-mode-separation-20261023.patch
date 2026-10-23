@@ -1,0 +1,213 @@
+--- /dev/null
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/data/MarketModePolicy.kt
+@@ -0,0 +1,28 @@
++package tr.borsatakip.v5.data
++
++/**
++ * Capability labels are deliberately separate from upstream reachability.
++ * An unconfigured HTTPS backend cannot disable user-triggered delayed BIST observation.
++ * A successful VİOP probe cannot certify live BIST symbols, candles or trading signals.
++ */
++object MarketModePolicy {
++    enum class BistSource { PRODUCTION_PREFLIGHT_REQUIRED, LOCAL_DELAYED_OBSERVATION }
++
++    fun bistSource(validHttpsConfigured: Boolean, apiKeyPresent: Boolean): BistSource =
++        if (validHttpsConfigured && apiKeyPresent) BistSource.PRODUCTION_PREFLIGHT_REQUIRED
++        else BistSource.LOCAL_DELAYED_OBSERVATION
++
++    /** A provider capability, NOT a statement that Yahoo is reachable or that data exists. */
++    fun delayedBistUserMessage(): String =
++        "Gecikmeli BIST gözlemi denenebilir. Veri ve sembol kapsamı doğrulanmadan tarama başarılı sayılamaz; canlı AL/SAT veya VİOP sinyali üretilmez."
++
++    fun settingsWorkMode(viopVerified: Boolean, backendConfigured: Boolean): String = when {
++        viopVerified && backendConfigured -> "VİOP TESTİ GEÇTİ"
++        backendConfigured -> "YETKİLİ TEST GEREKLİ"
++        else -> "BIST GECİKMELİ MOD"
++    }
++
++    /** Only a separately verified authorized provider can make a real VİOP contract claim. */
++    fun canClaimAuthorizedViop(backendConfigured: Boolean, viopQuoteVerified: Boolean): Boolean =
++        backendConfigured && viopQuoteVerified
++}
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/SettingsActivity.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/SettingsActivity.kt
+@@ -21,6 +21,7 @@
+ import tr.borsatakip.v5.data.BackendPreflightClient
+ import tr.borsatakip.v5.data.IntervalMarketDataProvider
+ import tr.borsatakip.v5.data.MtfHistoryCache
++import tr.borsatakip.v5.data.MarketModePolicy
+ import tr.borsatakip.v5.data.ProviderReadinessService
+ import tr.borsatakip.v5.data.ProviderRouter
+ import tr.borsatakip.v5.data.ProviderState
+@@ -131,7 +132,10 @@
+             val button = view as Button
+             val local = readiness.localConfigState()
+             if (local.state == ProviderState.PROVIDER_NOT_CONFIGURED) {
+-                Toast.makeText(this, local.message, Toast.LENGTH_LONG).show()
++                // Refreshing the authorized backend is distinct from delayed BIST observation.
++                Toast.makeText(this, MarketModePolicy.delayedBistUserMessage(), Toast.LENGTH_LONG).show()
++                startActivity(Intent(this, FullUniverseScanActivity::class.java)
++                    .putExtra(FullUniverseScanActivity.EXTRA_LOCAL_DELAYED_MODE, true))
+                 return@setOnClickListener
+             }
+             button.isEnabled = false
+@@ -144,7 +148,7 @@
+                 refreshDashboard()
+                 Toast.makeText(
+                     this@SettingsActivity,
+-                    if (result.state == ProviderState.PROVIDER_READY) "Provider verisi yeniden doğrulandı ve yenilendi." else "Veri yenilenemedi: ${result.failureCode} • ${result.message}",
++                    if (result.state == ProviderState.PROVIDER_READY) "VİOP sağlayıcı ön kontrolü doğrulandı; BIST sembol, mum ve tarama kapsamı ayrıca test edilmelidir." else "Yetkili VİOP bağlantısı doğrulanamadı: ${result.failureCode} • ${result.message}",
+                     Toast.LENGTH_LONG
+                 ).show()
+             }
+@@ -188,7 +192,9 @@
+         }
+         statusSummary.text = buildString {
+             append(snapshot.message)
+-            if (snapshot.testedAt > 0L) append(" • Son kontrol ${formatTime(snapshot.testedAt)}")
++            append("\n")
++            append(MarketModePolicy.delayedBistUserMessage())
++            if (snapshot.testedAt > 0L) append(" • Yetkili VİOP son kontrol ${formatTime(snapshot.testedAt)}")
+         }
+ 
+         val connectionBadge = findViewById<TextView>(R.id.connectionBadge)
+@@ -229,11 +235,10 @@
+         }
+ 
+         val workBadge = findViewById<TextView>(R.id.workModeBadge)
+-        when {
+-            snapshot.state == ProviderState.PROVIDER_READY -> setBadge(workBadge, "CANLI VERİ", R.color.green)
+-            settings.experimentalProvidersEnabled && settings.yahooFallbackEnabled -> setBadge(workBadge, "GECİKMELİ YEDEK", R.color.yellow)
+-            else -> setBadge(workBadge, "YAPILANDIRILMAMIŞ", R.color.text_muted)
+-        }
++        val authorizedConfigured = tr.borsatakip.v5.data.BackendUrlPolicy.isValid(settings.baseUrl) && settings.apiKey.isNotBlank()
++        val viopVerified = snapshot.state == ProviderState.PROVIDER_READY && snapshot.viopQuoteOk
++        val workLabel = MarketModePolicy.settingsWorkMode(viopVerified, authorizedConfigured)
++        setBadge(workBadge, workLabel, if (viopVerified && authorizedConfigured) R.color.green else R.color.yellow)
+     }
+ 
+     private fun setBadge(view: TextView, label: String, colorRes: Int) {
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/BistScanActivity.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/BistScanActivity.kt
+@@ -37,6 +37,7 @@
+ import tr.borsatakip.v5.data.ProviderException
+ import tr.borsatakip.v5.data.ProviderFailureCode
+ import tr.borsatakip.v5.data.IntervalMarketDataProvider
++import tr.borsatakip.v5.data.MarketModePolicy
+ import tr.borsatakip.v5.data.SettingsStore
+ import tr.borsatakip.v5.data.ScanTimeframe
+ import tr.borsatakip.v5.data.SignalHistoryRecorder
+@@ -247,7 +248,7 @@
+                         debug.text = "Health ✓ • Authentication ✓ • Symbols ✓ (${preflight.symbolCount}) • Quote ✓ • History ✓ • Evren doğrulandı=$universeVerified • seçili timeframe=${timeframe.apiInterval}"
+                     } else {
+                         status.text = "Yedek/gecikmeli analiz"
+-                        heroSubtitle.text = "Yahoo Finance ${timeframe.label} OHLCV ile gecikmeli teknik analiz • doğrulanmış AL/SAT sinyali üretilmez."
++                        heroSubtitle.text = "Yahoo Finance ${timeframe.label} OHLCV gecikmeli gözlem deneniyor • canlı AL/SAT veya VİOP sinyali üretilmez."
+                         debug.text = "Yahoo Finance • YEDEK/GECİKMELİ • ${timeframe.apiInterval} OHLCV • doğrulanmış işlem sinyali kapalı"
+                     }
+ 
+@@ -638,7 +639,10 @@
+     }
+ 
+     private fun productionBackendConfigured(): Boolean =
+-        tr.borsatakip.v5.data.BackendUrlPolicy.isValid(settings.baseUrl) && settings.apiKey.isNotBlank()
++        MarketModePolicy.bistSource(
++            tr.borsatakip.v5.data.BackendUrlPolicy.isValid(settings.baseUrl),
++            settings.apiKey.isNotBlank()
++        ) == MarketModePolicy.BistSource.PRODUCTION_PREFLIGHT_REQUIRED
+ 
+     private fun autoSnapshot(): AutoScanUiPolicy.Snapshot {
+         val tf = ScanTimeframe.fromStored(settings.analysisTimeframeMinutes)
+@@ -718,7 +722,7 @@
+         return if (productionBackendConfigured()) {
+             "${tf.label} gerçek OHLCV ile manuel tarama hazır. Otomatik tarama ${if (settings.autoScanEnabled) "açık" else "kapalı"}. TradingView piyasa veri kaynağı değildir."
+         } else {
+-            "Yahoo Finance ${tf.label} yedek/gecikmeli teknik analiz hazır • doğrulanmış AL/SAT sinyali üretilmez."
++            "Yahoo Finance ${tf.label} gecikmeli OHLCV denenebilir • veriler henüz doğrulanmadı • canlı AL/SAT veya VİOP sinyali yok."
+         }
+     }
+ 
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/worker/AutomaticScanRunner.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/worker/AutomaticScanRunner.kt
+@@ -4,6 +4,7 @@
+ import android.util.Log
+ import tr.borsatakip.v5.data.BackendPreflightClient
+ import tr.borsatakip.v5.data.IntervalMarketDataProvider
++import tr.borsatakip.v5.data.MarketModePolicy
+ import tr.borsatakip.v5.data.LastSuccessfulScanStore
+ import tr.borsatakip.v5.data.ProviderException
+ import tr.borsatakip.v5.data.ProviderFailureCode
+@@ -79,7 +80,10 @@
+         if (!settings.autoScanEnabled) {
+             return finish(Result(Outcome.STOPPED, "Otomatik tarama kapalı.", timeframeLabel = timeframe.label))
+         }
+-        val productionReady = tr.borsatakip.v5.data.BackendUrlPolicy.isValid(settings.baseUrl) && settings.apiKey.isNotBlank()
++        val productionReady = MarketModePolicy.bistSource(
++            tr.borsatakip.v5.data.BackendUrlPolicy.isValid(settings.baseUrl),
++            settings.apiKey.isNotBlank()
++        ) == MarketModePolicy.BistSource.PRODUCTION_PREFLIGHT_REQUIRED
+ 
+         return try {
+             val preflight = if (productionReady) BackendPreflightClient(app).checkBist() else null
+--- /dev/null
++++ b/android-v6323/app/src/test/java/tr/borsatakip/v5/data/MarketModePolicyTest.kt
+@@ -0,0 +1,27 @@
++package tr.borsatakip.v5.data
++
++import org.junit.Assert.*
++import org.junit.Test
++
++class MarketModePolicyTest {
++    @Test fun noBackendDoesNotDisableDelayedBistObservation() {
++        assertEquals(MarketModePolicy.BistSource.LOCAL_DELAYED_OBSERVATION, MarketModePolicy.bistSource(false, false))
++        assertTrue(MarketModePolicy.delayedBistUserMessage().contains("Gecikmeli BIST"))
++        assertFalse(MarketModePolicy.canClaimAuthorizedViop(false, false))
++    }
++    @Test fun missingApiKeyCannotClaimAuthorizedScan() {
++        assertEquals(MarketModePolicy.BistSource.LOCAL_DELAYED_OBSERVATION, MarketModePolicy.bistSource(true, false))
++        assertFalse(MarketModePolicy.canClaimAuthorizedViop(true, false))
++    }
++    @Test fun configuredBackendStillRequiresIndependentVerification() {
++        assertEquals(MarketModePolicy.BistSource.PRODUCTION_PREFLIGHT_REQUIRED, MarketModePolicy.bistSource(true, true))
++        assertFalse(MarketModePolicy.canClaimAuthorizedViop(true, false))
++        assertTrue(MarketModePolicy.canClaimAuthorizedViop(true, true))
++    }
++    @Test fun viopSuccessNeverClaimsBistVerified() {
++        assertEquals("VİOP TESTİ GEÇTİ", MarketModePolicy.settingsWorkMode(true, true))
++        assertEquals("YETKİLİ TEST GEREKLİ", MarketModePolicy.settingsWorkMode(false, true))
++        assertEquals("BIST GECİKMELİ MOD", MarketModePolicy.settingsWorkMode(false, false))
++        assertEquals("BIST GECİKMELİ MOD", MarketModePolicy.settingsWorkMode(true, false))
++    }
++}
+--- /dev/null
++++ b/android-v6323/app/src/test/java/tr/borsatakip/v5/data/Build668ProviderModesSourceContractTest.kt
+@@ -0,0 +1,29 @@
++package tr.borsatakip.v5.data
++
++import org.junit.Assert.*
++import org.junit.Test
++import java.io.File
++
++class Build668ProviderModesSourceContractTest {
++    private fun ui(name: String) = File("src/main/java/tr/borsatakip/v5/ui/$name").readText()
++    private fun worker(name: String) = File("src/main/java/tr/borsatakip/v5/worker/$name").readText()
++    @Test fun unconfiguredViopCannotHideLocalDelayedBist() {
++        val src = ui("SettingsActivity.kt")
++        assertTrue(src.contains("MarketModePolicy.delayedBistUserMessage()"))
++        assertTrue(src.contains("EXTRA_LOCAL_DELAYED_MODE, true"))
++        assertTrue(src.contains("VİOP sağlayıcı ön kontrolü doğrulandı"))
++        assertFalse(src.contains("setBadge(workBadge, \"CANLI VERİ\""))
++    }
++    @Test fun manualAndAutomaticBistUseSameIndependentModeGate() {
++        assertTrue(ui("BistScanActivity.kt").contains("MarketModePolicy.bistSource("))
++        assertTrue(worker("AutomaticScanRunner.kt").contains("MarketModePolicy.bistSource("))
++        assertTrue(ui("BistScanActivity.kt").contains("BistScanMode.DELAYED_ANALYSIS"))
++        assertTrue(worker("AutomaticScanRunner.kt").contains("BistScanMode.DELAYED_ANALYSIS"))
++    }
++    @Test fun realViopIsNeverFabricatedFromDelayedBist() {
++        val s = ui("ViopActivity.kt")
++        assertTrue(s.contains("ProviderState.PROVIDER_NOT_CONFIGURED"))
++        assertTrue(s.contains("DAYANAK MODU"))
++        assertTrue(s.contains("VİOP fiyatı üretilmedi"))
++    }
++}
