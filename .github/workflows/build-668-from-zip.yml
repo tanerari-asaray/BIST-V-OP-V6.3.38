@@ -2,7 +2,7 @@ name: BIST VIOP Build 668 APK
 on:
   push:
     paths:
-      - 'source/build668.zip'
+      - 'BIST-VIOP-V6.3.38-BUILD668-KAYNAK-PAKETI.zip'
       - '.github/workflows/build-668-from-zip.yml'
   workflow_dispatch:
 permissions:
@@ -18,32 +18,40 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          # The action default includes the removed legacy SDK package `tools`.
+          packages: 'platform-tools'
       - name: Install SDK
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'platform-tools'
       - uses: gradle/actions/setup-gradle@v4
       - name: Check source archive
         run: |
-          test -s source/build668.zip || { echo "::error::Upload source/build668.zip before running"; exit 1; }
-          unzip -t source/build668.zip | tail -n 2
+          test -s BIST-VIOP-V6.3.38-BUILD668-KAYNAK-PAKETI.zip || { echo "::error::Build 668 source archive missing"; exit 1; }
+          unzip -t BIST-VIOP-V6.3.38-BUILD668-KAYNAK-PAKETI.zip | tail -n 2
           mkdir -p extracted
-          unzip -q source/build668.zip -d extracted
-          test -f extracted/android-v6323/gradlew
-          test -f extracted/android-v6323/gradle/wrapper/gradle-wrapper.jar
+          unzip -q BIST-VIOP-V6.3.38-BUILD668-KAYNAK-PAKETI.zip -d extracted
+          WRAPPER="$(find extracted -type f -name gradlew -print -quit)"
+          test -n "$WRAPPER" || { echo "::error::Gradle wrapper missing from source archive"; exit 1; }
+          PROJECT_DIR="$(dirname "$WRAPPER")"
+          test -f "$PROJECT_DIR/gradle/wrapper/gradle-wrapper.jar"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
       - name: Build and test
-        working-directory: extracted/android-v6323
         run: |
+          cd "$PROJECT_DIR"
           chmod +x ./gradlew
           ./gradlew --no-daemon --stacktrace --max-workers=2 :app:compileDiagnosticKotlin :app:testDiagnosticUnitTest :app:lintDiagnostic :app:assembleDiagnostic
       - name: Validate APK
         run: |
-          find extracted/android-v6323/app/build/outputs/apk/diagnostic -name '*.apk' -type f -size +0c -print -exec unzip -t {} \; -exec sha256sum {} \;
+          APK_COUNT="$(find "$PROJECT_DIR/app/build/outputs/apk/diagnostic" -name '*.apk' -type f -size +0c | wc -l)"
+          test "$APK_COUNT" -gt 0 || { echo "::error::No non-empty diagnostic APK produced"; exit 1; }
+          find "$PROJECT_DIR/app/build/outputs/apk/diagnostic" -name '*.apk' -type f -size +0c -print -exec unzip -t {} \; -exec sha256sum {} \;
       - name: Upload APK and reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: BIST-VIOP-BUILD668-APK-AND-REPORTS
           path: |
-            extracted/android-v6323/app/build/outputs/apk/diagnostic/*.apk
-            extracted/android-v6323/app/build/reports/**
-            extracted/android-v6323/app/build/test-results/**
+            extracted/**/app/build/outputs/apk/diagnostic/*.apk
+            extracted/**/app/build/reports/**
+            extracted/**/app/build/test-results/**
           if-no-files-found: warn
