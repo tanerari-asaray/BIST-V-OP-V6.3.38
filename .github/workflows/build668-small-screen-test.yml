@@ -9,6 +9,7 @@ on:
       - patches/build668-bottom-nav-single-icon.patch
       - patches/build668-audit-install-identity.patch
       - patches/build668-provider-mode-separation-20261023.patch
+      - patches/build668-provider-mode-b115-test-fix.patch
   workflow_dispatch:
 permissions:
   contents: read
@@ -34,7 +35,7 @@ jobs:
           PY
           echo "122432394e91055acc4e0189151ba3cb5b8250e0d4d4c9e5bbd6fb12cd69d28d  patches/build668-verified-small-screen-ui.patch" | sha256sum -c
           cd source
-          for p in build668-delayed-chart-display build668-delayed-chart-test-contract build668-delayed-chart-side-by-side build668-deep-scan-ui-audit build668-verified-small-screen-ui build668-bottom-nav-single-icon build668-audit-install-identity build668-provider-mode-separation-20261023; do
+          for p in build668-delayed-chart-display build668-delayed-chart-test-contract build668-delayed-chart-side-by-side build668-deep-scan-ui-audit build668-verified-small-screen-ui build668-bottom-nav-single-icon build668-audit-install-identity build668-provider-mode-separation-20261023 build668-provider-mode-b115-test-fix; do
             git apply --check "../patches/$p.patch"
             git apply "../patches/$p.patch"
           done
