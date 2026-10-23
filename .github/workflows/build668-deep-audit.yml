@@ -12,6 +12,7 @@ on:
       - patches/build668-bottom-nav-single-icon.patch
       - patches/build668-audit-install-identity.patch
       - patches/build668-provider-mode-separation-20261023.patch
+      - patches/build668-provider-mode-b115-test-fix.patch
       - .github/workflows/build668-deep-audit.yml
   workflow_dispatch:
 
@@ -56,6 +57,8 @@ jobs:
           git apply ../patches/build668-audit-install-identity.patch
           git apply --check ../patches/build668-provider-mode-separation-20261023.patch
           git apply ../patches/build668-provider-mode-separation-20261023.patch
+          git apply --check ../patches/build668-provider-mode-b115-test-fix.patch
+          git apply ../patches/build668-provider-mode-b115-test-fix.patch
           grep -q 'delayedDisplaySource' android-v6323/app/src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt
       - name: Bundle exact verified patched source tree
         shell: bash
