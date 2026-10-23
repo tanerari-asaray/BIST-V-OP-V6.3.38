@@ -1,0 +1,79 @@
+name: Export Build 668 Audited Complete Source
+on:
+  push:
+    branches:
+      - build/668-deep-scan-ui-audit-20261022
+    paths:
+      - .github/workflows/build668-export-source.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  export-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Reconstruct source exactly as audited APK build
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          p=Path('BIST-VIOP-V6.3.38-BUILD668-FINAL-SOURCE.zip')
+          with ZipFile(p) as z:
+              assert z.testzip() is None
+              for member in z.namelist():
+                  name=Path(member)
+                  assert not name.is_absolute() and '..' not in name.parts
+              z.extractall('source')
+          PY
+          cd source
+          for p in \
+            build668-delayed-chart-display \
+            build668-delayed-chart-test-contract \
+            build668-delayed-chart-side-by-side \
+            build668-deep-scan-ui-audit \
+            build668-verified-small-screen-ui \
+            build668-bottom-nav-single-icon \
+            build668-audit-install-identity
+          do
+            git apply --check "../patches/$p.patch"
+            git apply "../patches/$p.patch"
+            echo "APPLIED $p"
+          done
+          grep -Fq '.diagnostic.v668.audited' android-v6323/app/build.gradle.kts
+          grep -Fq 'R.id.navHome to "Ana Sayfa"' android-v6323/app/src/main/java/tr/borsatakip/v5/ui/MarketScreenUi.kt
+          test -e android-v6323/gradle/wrapper/gradle-wrapper.jar
+          cd ..
+      - name: Package reproducible full source and manifest
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import hashlib, json, os
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          root=Path("source")
+          target=Path("BIST-VIOP-V6.3.38-BUILD668-DENETIMLI-TAM-KAYNAK.zip")
+          members=sorted(x for x in root.rglob("*") if x.is_file())
+          assert len(members) >= 710, len(members)
+          with ZipFile(target,'w',ZIP_DEFLATED,compresslevel=7) as z:
+              for p in members: z.write(p,p.relative_to(root).as_posix())
+          with ZipFile(target) as z:
+              assert z.testzip() is None
+              assert len(z.namelist())==len(members)
+          digest=hashlib.sha256(target.read_bytes()).hexdigest()
+          meta=dict(filename=target.name,bytes=target.stat().st_size,file_count=len(members),sha256=digest,repository_commit=os.environ.get("GITHUB_SHA"),apk_verified_workflow_run=39847681790,source_patch_order=[
+            "build668-delayed-chart-display","build668-delayed-chart-test-contract","build668-delayed-chart-side-by-side","build668-deep-scan-ui-audit","build668-verified-small-screen-ui","build668-bottom-nav-single-icon","build668-audit-install-identity"
+          ],app_name="Borsa 668 · Denetimli",version="6.3.38",build=668)
+          Path("BUILD668-DENETIMLI-KAYNAK-MANIFEST.json").write_text(json.dumps(meta,ensure_ascii=False,indent=2)+"\n",encoding="utf-8")
+          print(json.dumps(meta,ensure_ascii=False,indent=2))
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BIST-VIOP-BUILD668-DENETIMLI-TAM-KAYNAK
+          path: |
+            BIST-VIOP-V6.3.38-BUILD668-DENETIMLI-TAM-KAYNAK.zip
+            BUILD668-DENETIMLI-KAYNAK-MANIFEST.json
+          if-no-files-found: error
