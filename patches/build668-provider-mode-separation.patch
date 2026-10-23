@@ -1,0 +1,158 @@
+--- /dev/null
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/data/ObservationModeReadinessPolicy.kt
+@@ -0,0 +1,22 @@
++package tr.borsatakip.v5.data
++
++/**
++ * Local delayed BIST observation is independent of a licensed production backend.
++ * Authorization for a full BIST/VIOP attempt requires a valid HTTPS endpoint and
++ * a non-empty API key, but this *local preflight* never claims a live VIOP feed.
++ */
++object ObservationModeReadinessPolicy {
++    enum class Mode { LOCAL_DELAYED_BIST, AUTHORIZED_BIST_VIOP }
++    data class Decision(val mayStart: Boolean, val mode: Mode, val message: String)
++
++    fun check(localMode: Boolean, baseUrl: String, apiKey: String): Decision {
++        if (localMode) return Decision(true, Mode.LOCAL_DELAYED_BIST,
++            "Yalnız gecikmeli BIST teknik gözlemi; VİOP ve canlı işlem onayı yok.")
++        if (!BackendUrlPolicy.isValid(baseUrl)) return Decision(false, Mode.AUTHORIZED_BIST_VIOP,
++            "Yetkili BIST/VİOP taraması için geçerli HTTPS backend gerekir. Gecikmeli BIST gözlemini ayrıca açabilirsiniz.")
++        if (apiKey.isBlank()) return Decision(false, Mode.AUTHORIZED_BIST_VIOP,
++            "Yetkili BIST/VİOP taraması için API anahtarı gerekir. Gecikmeli BIST gözlemini ayrıca açabilirsiniz.")
++        return Decision(true, Mode.AUTHORIZED_BIST_VIOP,
++            "Yetkili bağlantı yerel olarak yapılandırıldı; canlı VİOP ve veri yetkisi henüz doğrulanmadı.")
++    }
++}
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/FullUniverseScanRuntime.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/FullUniverseScanRuntime.kt
+@@ -34,6 +34,17 @@
+         stopRequested=false
+         val context=inputContext.applicationContext
+         val runId=UUID.randomUUID().toString()
++        // This service can be entered without the Activity's preflight (notification,
++        // resumed work, or a future caller). Never launch an authorized scan with
++        // missing credentials. This gate deliberately does NOT block local BIST.
++        val config = SettingsStore(context).connectionSnapshot()
++        val modeGate = ObservationModeReadinessPolicy.check(localMode, config.baseUrl, config.apiKey)
++        if (!modeGate.mayStart) {
++            DiagnosticJournal(context).record("SCAN", "PROVIDER", "AUTHORIZED_BACKEND_NOT_CONFIGURED", runId)
++            mutable.value = Progress(runId, localMode, state=FullUniversePolicy.State.FAILED,
++                failure=modeGate.message)
++            return
++        }
+         val lease=BistScanGate.tryAcquire(runId,"UNIVERSE_OBSERVATION")
+         if(lease==null) {
+             DiagnosticJournal(context).record("SCAN","CONCURRENCY","SCAN_ALREADY_RUNNING",runId)
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/FullUniverseScanActivity.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/FullUniverseScanActivity.kt
+@@ -39,6 +39,7 @@
+ import tr.borsatakip.v5.scan.FundamentalValuationEngine as Valuation
+ import tr.borsatakip.v5.data.SettingsStore
+ import tr.borsatakip.v5.data.BackendUrlPolicy
++import tr.borsatakip.v5.data.ObservationModeReadinessPolicy
+ import tr.borsatakip.v5.data.ViopWatchlistStore
+ import tr.borsatakip.v5.data.FullUniverseScanSnapshotStore
+ import java.text.SimpleDateFormat
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/FullUniverseScanActivity.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/FullUniverseScanActivity.kt
+@@ -383,10 +383,21 @@
+             .putExtra(SettingsDetailActivity.EXTRA_MODE, SettingsDetailActivity.MODE_DATA_CONNECTION))
+     }
+     private fun startScan(resume: Boolean = false, retryFailuresOnly: Boolean = false) {
+-        if (!localMode && (SettingsStore(this).apiKey.isBlank() || !BackendUrlPolicy.isValid(SettingsStore(this).baseUrl))) {
++        val connection = SettingsStore(this).connectionSnapshot()
++        val modeGate = ObservationModeReadinessPolicy.check(localMode, connection.baseUrl, connection.apiKey)
++        if (!modeGate.mayStart) {
+             AlertDialog.Builder(this).setTitle("Yetkili tarama başlatılamadı")
+-                .setMessage("Eksik API anahtarı veya HTTPS adresi. Gecikmeli teknik gözlem ayrı çalışır. Lisanslı piyasa akışı doğrulanmadan yetkili tarama yapılamaz.")
+-                .setPositiveButton("BAĞLANTI AYARLARI") { _, _ -> openConnectionSettings() }
++                .setMessage(modeGate.message)
++                .setPositiveButton("GECİKMELİ BIST MODU") { _, _ ->
++                    localMode = true
++                    entries.clear()
++                    counts = FullUniversePolicy.Counters()
++                    state = FullUniversePolicy.State.IDLE
++                    scanId = ""
++                    discoveryFailure = "Gecikmeli BIST modu seçildi. VİOP taranmayacak."
++                    refreshUI()
++                }
++                .setNeutralButton("BAĞLANTI AYARLARI") { _, _ -> openConnectionSettings() }
+                 .setNegativeButton("VAZGEÇ", null).show()
+             return
+         }
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/SettingsActivity.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/SettingsActivity.kt
+@@ -22,6 +22,7 @@
+ import tr.borsatakip.v5.data.IntervalMarketDataProvider
+ import tr.borsatakip.v5.data.MtfHistoryCache
+ import tr.borsatakip.v5.data.ProviderReadinessService
++import tr.borsatakip.v5.data.ObservationModeReadinessPolicy
+ import tr.borsatakip.v5.data.ProviderRouter
+ import tr.borsatakip.v5.data.ProviderState
+ import tr.borsatakip.v5.data.RealTimeIntegrityPolicy
+--- a/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/SettingsActivity.kt
++++ b/android-v6323/app/src/main/java/tr/borsatakip/v5/ui/SettingsActivity.kt
+@@ -132,7 +132,17 @@
+             val button = view as Button
+             val local = readiness.localConfigState()
+             if (local.state == ProviderState.PROVIDER_NOT_CONFIGURED) {
+-                Toast.makeText(this, local.message, Toast.LENGTH_LONG).show()
++                // Missing licensed backend must not falsely disable offline-configurable
++                // delayed BIST observation. Keep backend refresh a separate action.
++                AlertDialog.Builder(this)
++                    .setTitle("Yetkili veri sağlayıcısı yapılandırılmamış")
++                    .setMessage(local.message + "\n\nGecikmeli BIST teknik gözlemine ayrıca geçebilirsiniz; canlı VİOP verisi veya AL/SAT onayı sağlamaz.")
++                    .setPositiveButton("GECİKMELİ BIST GÖZLEMİ") { _, _ ->
++                        startActivity(Intent(this, FullUniverseScanActivity::class.java)
++                            .putExtra(FullUniverseScanActivity.EXTRA_LOCAL_DELAYED_MODE, true))
++                    }
++                    .setNegativeButton("KAPAT", null)
++                    .show()
+                 return@setOnClickListener
+             }
+             button.isEnabled = false
+--- /dev/null
++++ b/android-v6323/app/src/test/java/tr/borsatakip/v5/analysis/Build668ProviderModeSeparationTest.kt
+@@ -0,0 +1,42 @@
++package tr.borsatakip.v5.analysis
++
++import org.junit.Assert.*
++import org.junit.Test
++import java.io.File
++import tr.borsatakip.v5.data.ObservationModeReadinessPolicy
++import tr.borsatakip.v5.data.ObservationModeReadinessPolicy.Mode
++
++/** Regression tests against false full-universe claims when provider is absent. */
++class Build668ProviderModeSeparationTest {
++    @Test fun delayedBistCanRunWithoutProductionBackend() {
++        val d = ObservationModeReadinessPolicy.check(true, "", "")
++        assertTrue(d.mayStart)
++        assertEquals(Mode.LOCAL_DELAYED_BIST, d.mode)
++        assertTrue(d.message.contains("VİOP"))
++    }
++
++    @Test fun authorizedFullScanCannotRunWithoutHttpsOrApiKey() {
++        assertFalse(ObservationModeReadinessPolicy.check(false, "", "").mayStart)
++        assertFalse(ObservationModeReadinessPolicy.check(false, "http://localhost:8080", "key").mayStart)
++        assertFalse(ObservationModeReadinessPolicy.check(false, "https://example.org", "").mayStart)
++    }
++
++    @Test fun configuredEndpointStillDoesNotClaimLicencedLiveProvider() {
++        val d = ObservationModeReadinessPolicy.check(false, "https://example.org", "key")
++        assertTrue(d.mayStart)
++        assertEquals(Mode.AUTHORIZED_BIST_VIOP, d.mode)
++        assertTrue(d.message.contains("doğrulanmadı"))
++    }
++
++    @Test fun runtimeAndUiBothUseIndependentAuthorizationGate() {
++        val root = File("src/main/java/tr/borsatakip/v5/ui")
++        val runtime = File(root, "FullUniverseScanRuntime.kt").readText()
++        val activity = File(root, "FullUniverseScanActivity.kt").readText()
++        val settings = File(root, "SettingsActivity.kt").readText()
++        assertTrue(runtime.contains("ObservationModeReadinessPolicy.check(localMode"))
++        assertTrue(runtime.contains("if (!modeGate.mayStart)"))
++        assertTrue(activity.contains("GECİKMELİ BIST MODU"))
++        assertTrue(settings.contains("EXTRA_LOCAL_DELAYED_MODE, true"))
++        assertTrue(settings.contains("canlı VİOP verisi veya AL/SAT onayı sağlamaz"))
++    }
++}
