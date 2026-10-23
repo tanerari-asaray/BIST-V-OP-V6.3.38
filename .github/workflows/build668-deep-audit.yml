@@ -11,6 +11,7 @@ on:
       - patches/build668-verified-small-screen-ui.patch
       - patches/build668-bottom-nav-single-icon.patch
       - patches/build668-audit-install-identity.patch
+      - patches/build668-provider-mode-separation-20261023.patch
       - .github/workflows/build668-deep-audit.yml
   workflow_dispatch:
 
@@ -53,7 +54,33 @@ jobs:
           git apply ../patches/build668-bottom-nav-single-icon.patch
           git apply --check ../patches/build668-audit-install-identity.patch
           git apply ../patches/build668-audit-install-identity.patch
+          git apply --check ../patches/build668-provider-mode-separation-20261023.patch
+          git apply ../patches/build668-provider-mode-separation-20261023.patch
           grep -q 'delayedDisplaySource' android-v6323/app/src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt
+      - name: Bundle exact verified patched source tree
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile, ZIP_DEFLATED
+          out=Path('BIST-VIOP-V6.3.38-BUILD668-PROVIDER-AYRIMI-TAM-KAYNAK.zip')
+          root=Path('source')
+          with ZipFile(out,'w',compression=ZIP_DEFLATED,compresslevel=6) as z:
+              for file in sorted(root.rglob('*')):
+                  if file.is_file():
+                      z.write(file,file.relative_to(root))
+          with ZipFile(out) as z:
+              assert z.testzip() is None
+              assert 'android-v6323/app/src/main/java/tr/borsatakip/v5/data/MarketModePolicy.kt' in z.namelist()
+              assert 'android-v6323/app/src/test/java/tr/borsatakip/v5/data/MarketModePolicyTest.kt' in z.namelist()
+          print('Source ZIP ready',out, out.stat().st_size)
+          PY
+      - name: Upload exact source with fixes
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIST-VIOP-B668-PROVIDER-AYRIMI-TAM-KAYNAK
+          path: BIST-VIOP-V6.3.38-BUILD668-PROVIDER-AYRIMI-TAM-KAYNAK.zip
+          if-no-files-found: error
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
