@@ -55,3 +55,64 @@ jobs:
             extracted/**/app/build/reports/**
             extracted/**/app/build/test-results/**
           if-no-files-found: warn
+
+  emulator-smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+      - name: Download built APK
+        uses: actions/download-artifact@v4
+        with:
+          name: BIST-VIOP-BUILD668-APK-AND-REPORTS
+          path: downloaded
+      - name: Locate APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find downloaded -name '*.apk' -type f -size +0c -print -quit)"
+          test -n "$apk"
+          echo "APK_PATH=$apk" >> "$GITHUB_ENV"
+      - name: Android 15 emulator installation and launch smoke
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            set -euo pipefail
+            mkdir -p emulator-reports
+            adb wait-for-device
+            adb shell getprop sys.boot_completed | tee emulator-reports/boot.txt
+            adb install -r "$APK_PATH"
+            pkg="$(aapt dump badging "$APK_PATH" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)"
+            test -n "$pkg"
+            echo "$pkg" | tee emulator-reports/package.txt
+            adb logcat -c
+            adb shell monkey -p "$pkg" -c android.intent.category.LAUNCHER 1 | tee emulator-reports/launch.txt
+            sleep 12
+            adb shell screencap -p /sdcard/build668-smoke.png
+            adb pull /sdcard/build668-smoke.png emulator-reports/screenshot.png
+            adb logcat -d -v brief > emulator-reports/logcat.txt
+            if grep -E "FATAL EXCEPTION|Process: $pkg" emulator-reports/logcat.txt | grep -q "FATAL EXCEPTION"; then
+              echo "Fatal exception detected in emulator log" >&2
+              exit 1
+            fi
+            test -s emulator-reports/screenshot.png
+      - name: Upload emulator screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BUILD668-ANDROID15-EMULATOR-SMOKE
+          path: emulator-reports/
+          if-no-files-found: warn
