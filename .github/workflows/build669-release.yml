@@ -11,6 +11,7 @@ on:
       - patches/build668-verified-small-screen-ui.patch
       - patches/build668-support-resistance-real-levels.patch
       - .github/workflows/build669-release.yml
+      - .github/scripts/build669-emulator-smoke.sh
   workflow_dispatch:
 
 permissions:
@@ -123,4 +124,37 @@ jobs:
             delayed-chart-build-tests.log
             delayed-chart-lint.log
             source/android-v6323/app/build/test-results/testDiagnosticUnitTest/**
+          if-no-files-found: warn
+
+  emulator-smoke:
+    needs: build-delayed-chart
+    runs-on: ubuntu-latest
+    timeout-minutes: 50
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: actions/download-artifact@v4
+        with:
+          name: BIST-VIOP-V6.3.39-BUILD669-APK
+          path: build669-artifact
+      - name: Android 15 emulator install launch screenshot smoke
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          profile: pixel_6
+          disable-animations: true
+          script: bash .github/scripts/build669-emulator-smoke.sh build669-artifact/output/BIST-VIOP-V6.3.39-BUILD669-DIAGNOSTIC.apk
+      - name: Preserve emulator evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BUILD669-android15-emulator-evidence
+          path: emulator-evidence/
           if-no-files-found: warn
