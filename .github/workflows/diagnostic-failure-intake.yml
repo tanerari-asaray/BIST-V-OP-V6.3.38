@@ -4,9 +4,8 @@ name: Diagnostic failure intake
 on:
   workflow_run:
     workflows:
-      - "Android Build"
-      - "Android Diagnostic Build"
-      - "Build 668 APK"
+      - "Build Android APK (Build 668)"
+      - "BIST VIOP Build 668 APK"
     types: [completed]
 
 permissions:
