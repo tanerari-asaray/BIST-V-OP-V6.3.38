@@ -19,11 +19,15 @@ sleep 20
 adb shell pidof "$PKG" | tee emulator-evidence/pid.txt
 test -s emulator-evidence/pid.txt
 adb shell dumpsys activity activities > emulator-evidence/activities.txt
-adb shell uiautomator dump /sdcard/window.xml || true
-adb pull /sdcard/window.xml emulator-evidence/window.xml || true
+# Preserve crash and visual evidence even when UIAutomator hangs or fails.
 adb exec-out screencap -p > emulator-evidence/launch.png
 test -s emulator-evidence/launch.png
 adb logcat -d > emulator-evidence/logcat.txt
+# /sdcard/window.xml was unreadable in run 40100699177 (Permission denied).
+# The shell-owned temp directory avoids shared-storage access.
+adb shell rm -f /data/local/tmp/window.xml || true
+adb shell uiautomator dump /data/local/tmp/window.xml > emulator-evidence/uiautomator.txt 2>&1 || true
+adb exec-out cat /data/local/tmp/window.xml > emulator-evidence/window.xml 2> emulator-evidence/ui-read-error.txt || true
 if grep -A 15 'FATAL EXCEPTION' emulator-evidence/logcat.txt | grep -F "Process: $PKG"; then
   echo "SMOKE_FAIL: app FATAL EXCEPTION" | tee emulator-evidence/result.txt
   exit 1
@@ -32,7 +36,7 @@ fi
 # successful run showed a blocking Android "Process system isn't responding"
 # dialog over the app, with only the system dialog in the UI hierarchy.
 if [[ ! -s emulator-evidence/window.xml ]]; then
-  echo "SMOKE_FAIL: missing foreground UI hierarchy" | tee emulator-evidence/result.txt
+  echo "SMOKE_FAIL: missing foreground UI hierarchy (see uiautomator.txt and ui-read-error.txt)" | tee emulator-evidence/result.txt
   exit 1
 fi
 if grep -Eq 'resource-id="android:id/aerr_|text="[^"]*(isn.t responding|keeps stopping)' emulator-evidence/window.xml; then
