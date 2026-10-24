@@ -189,7 +189,7 @@
          periodButtons.forEach { (tf, button) -> button.alpha = if (tf == period) 1f else 0.55f }
 --- /dev/null
 +++ b/android-v6323/app/src/test/java/tr/borsatakip/v5/analysis/ChartSupportResistanceOverlayTest.kt
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,59 @@
 +package tr.borsatakip.v5.analysis
 +
 +import org.junit.Assert.assertEquals
@@ -241,6 +241,8 @@
 +        val stock = File(path + "StockDetailActivity.kt").readText()
 +        val fullscreen = File(path + "FullscreenChartActivity.kt").readText()
 +        assertTrue(view.contains("drawVerifiedLevels(canvas"))
++        assertTrue(view.contains("var showSupportResistance: Boolean = true"))
++        assertTrue(view.contains("if (showSupportResistance) drawVerifiedLevels("))
 +        assertTrue(view.contains("supportBandPaint"))
 +        assertTrue(view.contains("resistanceBandPaint"))
 +        assertTrue(stock.contains("ChartSupportResistance.fromConfirmed(candles.dropLast(1))"))
