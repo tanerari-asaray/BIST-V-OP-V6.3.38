@@ -1,0 +1,91 @@
+name: Build 668 Support Resistance Android Pixel Test
+on:
+  push:
+    branches:
+      - build/668-support-resistance-lines-20261022
+    paths:
+      - .github/workflows/build668-support-lines-android.yml
+      - patches/build668-verified-small-screen-ui.patch
+      - patches/build668-support-resistance-real-levels.patch
+      - patches/build668-support-resistance-android-line-test.patch
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  screen-android15:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract exact source and apply audit fixes
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          z=ZipFile('BIST-VIOP-V6.3.38-BUILD668-FINAL-SOURCE.zip')
+          assert z.testzip() is None
+          for name in z.namelist():
+              p=Path(name)
+              assert not p.is_absolute() and '..' not in p.parts
+          z.extractall('source')
+          PY
+          echo "122432394e91055acc4e0189151ba3cb5b8250e0d4d4c9e5bbd6fb12cd69d28d  patches/build668-verified-small-screen-ui.patch" | sha256sum -c
+          cd source
+          for p in build668-delayed-chart-display build668-delayed-chart-test-contract build668-delayed-chart-side-by-side build668-deep-scan-ui-audit build668-verified-small-screen-ui build668-support-resistance-real-levels build668-support-resistance-android-line-test; do
+            git apply --check "../patches/$p.patch"
+            git apply "../patches/$p.patch"
+          done
+          cd ..
+          sed -i 's/Build668VisualScreenshotTest,tr.borsatakip.v5.ui.VisualScreenshotTest/Build668SupportResistanceLineTest/g' .github/scripts/build668-large-font-emulator.sh
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Enable hardware virtualization and inspect runner
+        shell: bash
+        run: |
+          if [ -e /dev/kvm ]; then
+            sudo chmod 666 /dev/kvm
+            ls -l /dev/kvm
+          else
+            echo "KVM unavailable; emulator may be slow or fail to boot"
+          fi
+          free -h
+          df -h .
+      - name: Build app and Android instrumentation tests
+        working-directory: source/android-v6323
+        shell: bash
+        run: |
+          chmod +x gradlew
+          ./gradlew --no-daemon --max-workers=2 :app:assembleDiagnostic :app:assembleDiagnosticAndroidTest
+      - name: Install and capture real Android screenshots
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          arch: x86_64
+          target: google_apis
+          profile: pixel_6
+          cores: 2
+          ram-size: 4096M
+          disk-size: 6000M
+          emulator-boot-timeout: 480
+          emulator-options: -no-window -no-snapshot -noaudio -no-boot-anim -gpu swiftshader_indirect
+          disable-animations: true
+          script: bash .github/scripts/build668-large-font-emulator.sh
+      - name: Upload screenshots and Android test log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: B668-Support-Resistance-Android-Pixels
+          path: |
+            screenshots/**
+            large-font-android-test.log
+            source/android-v6323/app/build/outputs/androidTest-results/**
+            source/android-v6323/app/build/reports/androidTests/**
+          if-no-files-found: warn
