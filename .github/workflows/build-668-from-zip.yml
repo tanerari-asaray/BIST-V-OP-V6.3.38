@@ -90,7 +90,7 @@ jobs:
           profile: pixel_2
           emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
           script: |
-            set -euo pipefail
+            set -eu
             mkdir -p emulator-reports
             adb wait-for-device
             adb shell getprop sys.boot_completed | tee emulator-reports/boot.txt
