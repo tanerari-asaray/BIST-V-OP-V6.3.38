@@ -29,6 +29,8 @@ jobs:
             echo "::error::OPENAI_API_KEY repository secret is missing"
             exit 1
           fi
+      - name: Validate Python agent syntax
+        run: python3 -m py_compile .github/scripts/bist_ai_agent.py
       - name: Analyze latest Android build failures with OpenAI
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
