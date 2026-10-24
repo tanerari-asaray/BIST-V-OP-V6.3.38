@@ -4,6 +4,7 @@ on:
     branches:
       - automation/v6.3.39-build669-20261024
       - 'automation/fix-build669-emulator-*'
+      - automation/fix-40100699177-ui-hierarchy-capture-20261024
     paths:
       - patches/build668-delayed-chart-display.patch
       - patches/build668-delayed-chart-test-contract.patch
