@@ -25,12 +25,25 @@ timeout 30 adb exec-out screencap -p > emulator-evidence/launch.png
 test -s emulator-evidence/launch.png
 adb logcat -d > emulator-evidence/logcat.txt
 if grep -A 15 'FATAL EXCEPTION' emulator-evidence/logcat.txt | grep -F "Process: $PKG"; then exit 1; fi
-# Preserve UI evidence for chart and S/D review.
-test -s emulator-evidence/window.xml
-# Launch image is NOT a chart screenshot.
-cp emulator-evidence/window.xml emulator-evidence/launch-ui.xml
-if ! grep -Eiq 'S/D|Destek.?Diren' emulator-evidence/launch-ui.xml; then
-  echo "NOT_VERIFIED: S/D not visible on launch; chart navigation and interaction required" | tee emulator-evidence/result.txt
-  exit 1
-fi
-echo "S/D label found in UI hierarchy; interaction and chart rendering still NOT VERIFIED" | tee emulator-evidence/result.txt
+# Require the actual stock chart and a visible, clickable S/D control.
+# Do not substitute a launch screenshot for chart evidence.
+capture() {
+  local name="$1"
+  timeout 35 adb shell uiautomator dump /sdcard/window.xml
+  adb pull /sdcard/window.xml "emulator-evidence/${name}.xml" >/dev/null
+  timeout 35 adb exec-out screencap -p > "emulator-evidence/${name}.png"
+  test -s "emulator-evidence/${name}.png"
+}
+capture chart-navigation-required
+python3 - <<'PY'
+import xml.etree.ElementTree as ET
+root=ET.parse('emulator-evidence/chart-navigation-required.xml').getroot()
+nodes=[n for n in root.iter('node') if n.attrib.get('text')=='S/D' or n.attrib.get('content-desc')=='S/D']
+if len(nodes)!=1 or nodes[0].attrib.get('clickable')!='true':
+    raise SystemExit('NOT_VERIFIED: navigate to stock chart and expose one clickable S/D button')
+print('S/D visible and clickable')
+PY
+# No fabricated ON/OFF images: interaction must be implemented before screenshots
+# can be named sd-on.png and sd-off.png.
+echo 'NOT_VERIFIED: S/D toggle state transitions and ON/OFF screenshots not yet implemented' | tee emulator-evidence/result.txt
+exit 1
