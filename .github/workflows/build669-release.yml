@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - automation/v6.3.39-build669-20261024
+      - automation/build669-emulator-verification-20261024
     paths:
       - patches/build668-delayed-chart-display.patch
       - patches/build668-delayed-chart-test-contract.patch
