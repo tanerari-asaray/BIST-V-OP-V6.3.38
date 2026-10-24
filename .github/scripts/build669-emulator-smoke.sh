@@ -27,10 +27,10 @@ adb logcat -d > emulator-evidence/logcat.txt
 if grep -A 15 'FATAL EXCEPTION' emulator-evidence/logcat.txt | grep -F "Process: $PKG"; then exit 1; fi
 # Preserve UI evidence for chart and S/D review.
 test -s emulator-evidence/window.xml
-cp emulator-evidence/launch.png emulator-evidence/chart-review.png
-cp emulator-evidence/window.xml emulator-evidence/chart-review.xml
-if ! grep -Eiq 'S/D|Destek.?Diren' emulator-evidence/chart-review.xml; then
-  echo "NOT_VERIFIED: S/D control not found in current UI" | tee emulator-evidence/result.txt
+# Launch image is NOT a chart screenshot.
+cp emulator-evidence/window.xml emulator-evidence/launch-ui.xml
+if ! grep -Eiq 'S/D|Destek.?Diren' emulator-evidence/launch-ui.xml; then
+  echo "NOT_VERIFIED: S/D not visible on launch; chart navigation and interaction required" | tee emulator-evidence/result.txt
   exit 1
 fi
 echo "S/D label found in UI hierarchy; interaction and chart rendering still NOT VERIFIED" | tee emulator-evidence/result.txt
