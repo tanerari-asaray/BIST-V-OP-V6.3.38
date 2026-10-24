@@ -51,13 +51,15 @@
              series = ChartIndicators.calculate(field, intraday)
              legacy20 = ChartIndicators.ema(field.map { it.close }, 20)
              legacy50 = ChartIndicators.ema(field.map { it.close }, 50)
-@@ -70,6 +72,8 @@
+@@ -70,6 +72,10 @@
          set(value) { field = value; invalidate() }
  
      var trendAnalysis: LinearTrendAnalyzer.Result? = null
 +        set(value) { field = value; invalidate() }
 +    var supportResistance: ChartSupportResistance.Levels? = null
          set(value) { field = value; invalidate() }
++    var showSupportResistance: Boolean = true
++        set(value) { field = value; invalidate() }
  
      var timeframeLabel: String = ""
 @@ -215,6 +219,12 @@
@@ -81,8 +83,8 @@
 +            val visibleLow = visible.minOf { it.low }
 +            val visibleHigh = visible.maxOf { it.high }
 +            val headroom = (visibleHigh - visibleLow).coerceAtLeast(visibleHigh * 0.002) * 0.18
-+            supportResistance?.support?.price?.takeIf { it in (visibleLow-headroom)..(visibleHigh+headroom) }?.let(::add)
-+            supportResistance?.resistance?.price?.takeIf { it in (visibleLow-headroom)..(visibleHigh+headroom) }?.let(::add)
++            supportResistance?.takeIf { showSupportResistance }?.support?.price?.takeIf { it in (visibleLow-headroom)..(visibleHigh+headroom) }?.let(::add)
++            supportResistance?.takeIf { showSupportResistance }?.resistance?.price?.takeIf { it in (visibleLow-headroom)..(visibleHigh+headroom) }?.let(::add)
              if (markerVisible) add(markerPrice!!)
          }.filter { it.isFinite() && it > 0.0 }
          val rawMin = indicatorValues.minOrNull() ?: return
@@ -91,7 +93,7 @@
          val bodyWidth = max(2f, min(12f, step * 0.55f))
          if (showChannel) drawDynamicChannel(canvas, all, start, visible.size, left, right, ::y)
 +        // Horizontal support/resistance overlays are independent of sloped regression lines.
-+        drawVerifiedLevels(canvas, left, right, top, bottom, minV, maxV, ::y)
++        if (showSupportResistance) drawVerifiedLevels(canvas, left, right, top, bottom, minV, maxV, ::y)
          visible.forEachIndexed { i, k ->
              val x = if (visible.size <= 1) (left + right) / 2f else left + step * i
              val p = if (k.close >= k.open) up else down
@@ -187,7 +189,7 @@
          periodButtons.forEach { (tf, button) -> button.alpha = if (tf == period) 1f else 0.55f }
 --- /dev/null
 +++ b/android-v6323/app/src/test/java/tr/borsatakip/v5/analysis/ChartSupportResistanceOverlayTest.kt
-@@ -0,0 +1,57 @@
+@@ -0,0 +1,59 @@
 +package tr.borsatakip.v5.analysis
 +
 +import org.junit.Assert.assertEquals
@@ -239,6 +241,8 @@
 +        val stock = File(path + "StockDetailActivity.kt").readText()
 +        val fullscreen = File(path + "FullscreenChartActivity.kt").readText()
 +        assertTrue(view.contains("drawVerifiedLevels(canvas"))
++        assertTrue(view.contains("var showSupportResistance: Boolean = true"))
++        assertTrue(view.contains("if (showSupportResistance) drawVerifiedLevels("))
 +        assertTrue(view.contains("supportBandPaint"))
 +        assertTrue(view.contains("resistanceBandPaint"))
 +        assertTrue(stock.contains("ChartSupportResistance.fromConfirmed(candles.dropLast(1))"))
