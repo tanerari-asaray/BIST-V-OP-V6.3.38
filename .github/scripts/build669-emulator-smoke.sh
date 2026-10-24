@@ -43,7 +43,7 @@ if len(matches)!=1:
     raise SystemExit('NOT_VERIFIED: expected exactly one clickable S/D button on chart screen')
 bounds=matches[0].attrib.get('bounds','')
 import re
-xy=list(map(int,re.findall(r'\\d+',bounds)))
+xy=list(map(int,re.findall('[0-9]+',bounds)))
 if len(xy)!=4: raise SystemExit('NOT_VERIFIED: invalid S/D bounds')
 with open('emulator-evidence/sd-tap-coordinates.txt','w') as f:
     f.write(f'{(xy[0]+xy[2])//2} {(xy[1]+xy[3])//2}')
