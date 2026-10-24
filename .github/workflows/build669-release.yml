@@ -152,7 +152,7 @@ jobs:
           profile: pixel_6
           disable-animations: true
           script: |
-            set -euo pipefail
+            set -eu
             APK=$(find build669-artifact -type f -name 'BIST-VIOP-V6.3.39-BUILD669-DIAGNOSTIC.apk' -print -quit)
             test -n "$APK"
             bash .github/scripts/build669-emulator-smoke.sh "$APK"
