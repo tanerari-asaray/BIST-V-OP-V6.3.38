@@ -61,9 +61,9 @@ jobs:
           p=next((f for f in [Path('source/android-v6323/app/build.gradle.kts'),Path('source/android-v6323/app/build.gradle')] if f.exists()),None)
           assert p,'App gradle file not found'
           t=p.read_text()
-          t,n=re.subn(r'(versionCode\\s*(?:=\\s*)?)668\\b',lambda m:m.group(1)+'669',t,count=1)
+          t,n=re.subn(r'(versionCode\s*(?:=\s*)?)668\b',lambda m:m.group(1)+'669',t,count=1)
           assert n==1,'Unexpected versionCode format'
-          t,n=re.subn(r'(versionName\\s*(?:=\\s*)?["\\\'])6\\.3\\.38(?=["\\\'])',lambda m:m.group(1)+'6.3.39',t,count=1)
+          t,n=re.subn(r'(versionName\s*(?:=\s*)?["\\'])6\.3\.38(?=["\\'])',lambda m:m.group(1)+'6.3.39',t,count=1)
           assert n==1,'Unexpected versionName format'
           p.write_text(t)
           print('Updated version in',p)
