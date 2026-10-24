@@ -97,7 +97,7 @@ jobs:
             adb wait-for-device
             adb shell getprop sys.boot_completed | tee emulator-reports/boot.txt
             adb install -r "$APK_PATH"
-            pkg="$(\"$ANDROID_HOME/build-tools/35.0.0/aapt\" dump badging \"$APK_PATH\" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)"
+            pkg="$("$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK_PATH" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)"
             test -n "$pkg"
             echo "$pkg" | tee emulator-reports/package.txt
             adb logcat -c
