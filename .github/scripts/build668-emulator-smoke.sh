@@ -37,13 +37,32 @@ if [ -z "$activity" ]; then
 fi
 adb logcat -c
 adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n "$pkg/$activity" | tee emulator-reports/launch.txt
-grep -q 'Status: ok' emulator-reports/launch.txt
-sleep 12
+# On a busy Android 15 emulator, am start -W may report "Status: timeout"
+# even after ActivityManager accepted the launch and started the app process.
+# Do not treat that response as success: require evidence of the FIRST DRAWN
+# APP FRAME. A screenshot containing only the OS splash is not a pass.
+if grep -Eq '^(Error:|Exception)' emulator-reports/launch.txt; then
+  echo "::error::Activity launch was rejected; inspect launch.txt" >&2
+  exit 1
+fi
+drawn=0
+for attempt in $(seq 1 24); do
+  adb logcat -d -v brief > emulator-reports/logcat.txt || true
+  if grep -Fq "Displayed $pkg/" emulator-reports/logcat.txt; then
+    drawn=1
+    break
+  fi
+  sleep 5
+done
 adb shell pidof "$pkg" | tee emulator-reports/pid.txt
 test -s emulator-reports/pid.txt
 adb shell dumpsys activity activities > emulator-reports/activities.txt
 adb exec-out screencap -p > emulator-reports/screenshot.png
 adb logcat -d -v brief > emulator-reports/logcat.txt
+if [ "$drawn" -ne 1 ]; then
+  echo "::error::No first app frame (ActivityTaskManager Displayed) within 120s; screenshot may show splash only" >&2
+  exit 1
+fi
 
 if grep -q 'FATAL EXCEPTION' emulator-reports/logcat.txt; then
   echo "::error::Fatal exception detected; inspect emulator-reports/logcat.txt" >&2
