@@ -4,6 +4,7 @@ on:
     paths:
       - 'BIST-VIOP-V6.3.38-BUILD668-KAYNAK-PAKETI.zip'
       - '.github/workflows/build-668-from-zip.yml'
+      - '.github/scripts/build668-emulator-smoke.sh'
   workflow_dispatch:
 permissions:
   contents: read
