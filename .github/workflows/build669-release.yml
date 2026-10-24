@@ -1,0 +1,301 @@
+name: BIST VIOP v6.3.39 BUILD669 Verified APK
+on:
+  push:
+    branches:
+      - automation/v6.3.39-build669-20261024
+    paths:
+      - patches/build668-delayed-chart-display.patch
+      - patches/build668-delayed-chart-test-contract.patch
+      - patches/build668-delayed-chart-side-by-side.patch
+      - patches/build668-deep-scan-ui-audit.patch
+      - patches/build668-verified-small-screen-ui.patch
+      - patches/build668-support-resistance-real-levels.patch
+      - .github/workflows/build669-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-delayed-chart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract baseline source and apply tracked patch
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from zipfile import ZipFile
+          from pathlib import Path
+          archive=Path('BIST-VIOP-V6.3.38-BUILD668-FINAL-SOURCE.zip')
+          with ZipFile(archive) as z:
+              assert z.testzip() is None
+              for entry in z.namelist():
+                  assert '..' not in Path(entry).parts and not Path(entry).is_absolute()
+              z.extractall('source')
+          PY
+          cd source
+          git apply --check ../patches/build668-delayed-chart-display.patch
+          git apply ../patches/build668-delayed-chart-display.patch
+          git apply --check ../patches/build668-delayed-chart-test-contract.patch
+          git apply ../patches/build668-delayed-chart-test-contract.patch
+          git apply --check ../patches/build668-delayed-chart-side-by-side.patch
+          git apply ../patches/build668-delayed-chart-side-by-side.patch
+          git apply --check ../patches/build668-deep-scan-ui-audit.patch
+          git apply ../patches/build668-deep-scan-ui-audit.patch
+          echo "122432394e91055acc4e0189151ba3cb5b8250e0d4d4c9e5bbd6fb12cd69d28d  ../patches/build668-verified-small-screen-ui.patch" | sha256sum -c
+          git apply --check ../patches/build668-verified-small-screen-ui.patch
+          git apply ../patches/build668-verified-small-screen-ui.patch
+          git apply --check ../patches/build668-support-resistance-real-levels.patch
+          git apply ../patches/build668-support-resistance-real-levels.patch
+          grep -q 'delayedDisplaySource' android-v6323/app/src/main/java/tr/borsatakip/v5/ui/StockDetailActivity.kt
+      - name: Apply actual Android version v6.3.39 build 669
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          root=Path('source/android-v6323/app')
+          candidates=[root/'build.gradle.kts', root/'build.gradle']
+          target=next((p for p in candidates if p.exists()), None)
+          assert target, 'Android app Gradle config missing'
+          original=target.read_text()
+          def change(pattern,replacement,label):
+              global original
+              modified,count=re.subn(pattern,replacement,original,count=1)
+              assert count==1, f'{label}: expected exactly one match'
+              original=modified
+          change(r'(?m)^(\\s*versionCode\\s*(?:=\\s*)?)668\\s*
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile diagnostic APK and run all 1000+ unit tests
+        working-directory: source/android-v6323
+        shell: bash
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          bash ./gradlew --no-daemon --max-workers=2 :app:assembleDiagnostic :app:testDiagnosticUnitTest --stacktrace 2>&1 | tee ../../delayed-chart-build-tests.log
+      - name: Android lint
+        working-directory: source/android-v6323
+        shell: bash
+        run: |
+          set -o pipefail
+          bash ./gradlew --no-daemon --max-workers=2 :app:lintDiagnostic 2>&1 | tee ../../delayed-chart-lint.log
+      - name: Verify APK version DEX and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=$(find source/android-v6323/app/build/outputs/apk/diagnostic -maxdepth 1 -name '*.apk' -type f | head -1)
+          test -n "$APK"
+          unzip -t "$APK" | tail -2
+          unzip -Z1 "$APK" | grep -Eq '^classes([0-9]+)?\.dex$'
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "versionCode='669'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "versionName='6.3.39'"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | tee delayed-apk-signature.txt
+          sha256sum "$APK" | tee delayed-apk-sha256.txt
+          mkdir -p output
+          cp "$APK" output/BIST-VIOP-V6.3.39-BUILD669-DIAGNOSTIC.apk
+      - name: Upload verified diagnostic APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIST-VIOP-V6.3.39-BUILD669-APK
+          path: |
+            output/*.apk
+            delayed-apk-sha256.txt
+            delayed-apk-signature.txt
+          if-no-files-found: error
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: B669-test-logs
+          path: |
+            delayed-chart-build-tests.log
+            delayed-chart-lint.log
+            source/android-v6323/app/build/test-results/testDiagnosticUnitTest/**
+          if-no-files-found: warn
+,r'\\g<1>669','versionCode')
+          change(r'(?m)^(\\s*versionName\\s*(?:=\\s*)?["\\\'])6\\.3\\.38(["\\\']\\s*)
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile diagnostic APK and run all 1000+ unit tests
+        working-directory: source/android-v6323
+        shell: bash
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          bash ./gradlew --no-daemon --max-workers=2 :app:assembleDiagnostic :app:testDiagnosticUnitTest --stacktrace 2>&1 | tee ../../delayed-chart-build-tests.log
+      - name: Android lint
+        working-directory: source/android-v6323
+        shell: bash
+        run: |
+          set -o pipefail
+          bash ./gradlew --no-daemon --max-workers=2 :app:lintDiagnostic 2>&1 | tee ../../delayed-chart-lint.log
+      - name: Verify APK version DEX and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=$(find source/android-v6323/app/build/outputs/apk/diagnostic -maxdepth 1 -name '*.apk' -type f | head -1)
+          test -n "$APK"
+          unzip -t "$APK" | tail -2
+          unzip -Z1 "$APK" | grep -Eq '^classes([0-9]+)?\.dex$'
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "versionCode='669'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "versionName='6.3.39'"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | tee delayed-apk-signature.txt
+          sha256sum "$APK" | tee delayed-apk-sha256.txt
+          mkdir -p output
+          cp "$APK" output/BIST-VIOP-V6.3.39-BUILD669-DIAGNOSTIC.apk
+      - name: Upload verified diagnostic APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIST-VIOP-V6.3.39-BUILD669-APK
+          path: |
+            output/*.apk
+            delayed-apk-sha256.txt
+            delayed-apk-signature.txt
+          if-no-files-found: error
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: B669-test-logs
+          path: |
+            delayed-chart-build-tests.log
+            delayed-chart-lint.log
+            source/android-v6323/app/build/test-results/testDiagnosticUnitTest/**
+          if-no-files-found: warn
+,r'\\g<1>6.3.39\\2','versionName')
+          target.write_text(original)
+          print('Version changed in source:',target)
+          assert re.search(r'(?m)^\\s*versionCode\\s*(?:=\\s*)?669\\s*
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile diagnostic APK and run all 1000+ unit tests
+        working-directory: source/android-v6323
+        shell: bash
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          bash ./gradlew --no-daemon --max-workers=2 :app:assembleDiagnostic :app:testDiagnosticUnitTest --stacktrace 2>&1 | tee ../../delayed-chart-build-tests.log
+      - name: Android lint
+        working-directory: source/android-v6323
+        shell: bash
+        run: |
+          set -o pipefail
+          bash ./gradlew --no-daemon --max-workers=2 :app:lintDiagnostic 2>&1 | tee ../../delayed-chart-lint.log
+      - name: Verify APK version DEX and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=$(find source/android-v6323/app/build/outputs/apk/diagnostic -maxdepth 1 -name '*.apk' -type f | head -1)
+          test -n "$APK"
+          unzip -t "$APK" | tail -2
+          unzip -Z1 "$APK" | grep -Eq '^classes([0-9]+)?\.dex$'
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "versionCode='669'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "versionName='6.3.39'"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | tee delayed-apk-signature.txt
+          sha256sum "$APK" | tee delayed-apk-sha256.txt
+          mkdir -p output
+          cp "$APK" output/BIST-VIOP-V6.3.39-BUILD669-DIAGNOSTIC.apk
+      - name: Upload verified diagnostic APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIST-VIOP-V6.3.39-BUILD669-APK
+          path: |
+            output/*.apk
+            delayed-apk-sha256.txt
+            delayed-apk-signature.txt
+          if-no-files-found: error
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: B669-test-logs
+          path: |
+            delayed-chart-build-tests.log
+            delayed-chart-lint.log
+            source/android-v6323/app/build/test-results/testDiagnosticUnitTest/**
+          if-no-files-found: warn
+,original)
+          assert '6.3.39' in original
+          PY
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v4
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+      - uses: gradle/actions/wrapper-validation@v4
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile diagnostic APK and run all 1000+ unit tests
+        working-directory: source/android-v6323
+        shell: bash
+        run: |
+          set -o pipefail
+          chmod +x gradlew
+          bash ./gradlew --no-daemon --max-workers=2 :app:assembleDiagnostic :app:testDiagnosticUnitTest --stacktrace 2>&1 | tee ../../delayed-chart-build-tests.log
+      - name: Android lint
+        working-directory: source/android-v6323
+        shell: bash
+        run: |
+          set -o pipefail
+          bash ./gradlew --no-daemon --max-workers=2 :app:lintDiagnostic 2>&1 | tee ../../delayed-chart-lint.log
+      - name: Verify APK version DEX and signature
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK=$(find source/android-v6323/app/build/outputs/apk/diagnostic -maxdepth 1 -name '*.apk' -type f | head -1)
+          test -n "$APK"
+          unzip -t "$APK" | tail -2
+          unzip -Z1 "$APK" | grep -Eq '^classes([0-9]+)?\.dex$'
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "versionCode='669'"
+          "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK" | grep -q "versionName='6.3.39'"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose --print-certs "$APK" | tee delayed-apk-signature.txt
+          sha256sum "$APK" | tee delayed-apk-sha256.txt
+          mkdir -p output
+          cp "$APK" output/BIST-VIOP-V6.3.39-BUILD669-DIAGNOSTIC.apk
+      - name: Upload verified diagnostic APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BIST-VIOP-V6.3.39-BUILD669-APK
+          path: |
+            output/*.apk
+            delayed-apk-sha256.txt
+            delayed-apk-signature.txt
+          if-no-files-found: error
+      - name: Upload test logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: B669-test-logs
+          path: |
+            delayed-chart-build-tests.log
+            delayed-chart-lint.log
+            source/android-v6323/app/build/test-results/testDiagnosticUnitTest/**
+          if-no-files-found: warn
