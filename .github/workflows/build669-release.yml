@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - automation/v6.3.39-build669-20261024
+      - 'automation/fix-build669-emulator-*'
     paths:
       - patches/build668-delayed-chart-display.patch
       - patches/build668-delayed-chart-test-contract.patch
@@ -128,7 +129,8 @@ jobs:
 
   emulator-smoke:
     needs: build-delayed-chart
-    runs-on: ubuntu-latest
+    # BUILD668 emulator succeeded on Intel macOS; Linux runner lacked usable KVM.
+    runs-on: macos-15-intel
     timeout-minutes: 50
     steps:
       - uses: actions/checkout@v4
