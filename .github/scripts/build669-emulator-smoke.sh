@@ -34,16 +34,42 @@ capture() {
   timeout 35 adb exec-out screencap -p > "emulator-evidence/${name}.png"
   test -s "emulator-evidence/${name}.png"
 }
-capture chart-navigation-required
+capture sd-before
 python3 - <<'PY'
 import xml.etree.ElementTree as ET
-root=ET.parse('emulator-evidence/chart-navigation-required.xml').getroot()
-nodes=[n for n in root.iter('node') if n.attrib.get('text')=='S/D' or n.attrib.get('content-desc')=='S/D']
-if len(nodes)!=1 or nodes[0].attrib.get('clickable')!='true':
-    raise SystemExit('NOT_VERIFIED: navigate to stock chart and expose one clickable S/D button')
-print('S/D visible and clickable')
+root=ET.parse('emulator-evidence/sd-before.xml').getroot()
+matches=[n for n in root.iter('node') if (n.attrib.get('text','').strip()=='S/D' or n.attrib.get('content-desc','').strip()=='S/D') and n.attrib.get('clickable')=='true']
+if len(matches)!=1:
+    raise SystemExit('NOT_VERIFIED: expected exactly one clickable S/D button on chart screen')
+bounds=matches[0].attrib.get('bounds','')
+import re
+xy=list(map(int,re.findall(r'\\d+',bounds)))
+if len(xy)!=4: raise SystemExit('NOT_VERIFIED: invalid S/D bounds')
+with open('emulator-evidence/sd-tap-coordinates.txt','w') as f:
+    f.write(f'{(xy[0]+xy[2])//2} {(xy[1]+xy[3])//2}')
 PY
-# No fabricated ON/OFF images: interaction must be implemented before screenshots
-# can be named sd-on.png and sd-off.png.
-echo 'NOT_VERIFIED: S/D toggle state transitions and ON/OFF screenshots not yet implemented' | tee emulator-evidence/result.txt
-exit 1
+read -r X Y < emulator-evidence/sd-tap-coordinates.txt
+adb shell input tap "$X" "$Y"
+sleep 3
+capture sd-after-first-tap
+adb shell input tap "$X" "$Y"
+sleep 3
+capture sd-after-second-tap
+python3 - <<'PY'
+import xml.etree.ElementTree as ET
+files=['sd-before','sd-after-first-tap','sd-after-second-tap']
+states=[]
+for name in files:
+    root=ET.parse('emulator-evidence/'+name+'.xml').getroot()
+    matches=[n for n in root.iter('node') if n.attrib.get('text','').strip()=='S/D' or n.attrib.get('content-desc','').strip()=='S/D']
+    if len(matches)!=1: raise SystemExit('NOT_VERIFIED: S/D control missing after tap')
+    n=matches[0]
+    states.append((n.attrib.get('selected'),n.attrib.get('checked'),n.attrib.get('content-desc')))
+with open('emulator-evidence/sd-state-evidence.txt','w') as f:
+    f.write(repr(states))
+if states[0]==states[1] or states[0]!=states[2]:
+    raise SystemExit('NOT_VERIFIED: S/D state must change and return after second tap')
+print('S/D state transition observed; verify chart line pixels separately')
+PY
+# Screenshots are named by tap order until initial state is independently established.
+echo 'S/D_TOGGLE_STATE_PASS: screenshots captured for both states; chart line hiding requires visual comparison' | tee emulator-evidence/result.txt
