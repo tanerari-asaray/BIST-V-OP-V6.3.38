@@ -151,7 +151,11 @@ jobs:
           arch: x86_64
           profile: pixel_6
           disable-animations: true
-          script: bash .github/scripts/build669-emulator-smoke.sh build669-artifact/output/BIST-VIOP-V6.3.39-BUILD669-DIAGNOSTIC.apk
+          script: |
+            set -euo pipefail
+            APK=$(find build669-artifact -type f -name 'BIST-VIOP-V6.3.39-BUILD669-DIAGNOSTIC.apk' -print -quit)
+            test -n "$APK"
+            bash .github/scripts/build669-emulator-smoke.sh "$APK"
       - name: Preserve emulator evidence
         if: always()
         uses: actions/upload-artifact@v4
