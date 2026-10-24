@@ -60,7 +60,7 @@ except urllib.error.HTTPError as exc:
             "text": "OpenAI analizi çalışmadı (HTTP 429: kota, faturalandırma veya hız sınırı). "
                     "Aşağıdaki başarısız iş adımları GitHub Actions API verisidir; "
                     "otomatik düzeltme yapılmadı.\\n\\n" +
-                    json.dumps(evidence, ensure_ascii=False, indent=2)}]}]}]}
+                    json.dumps(evidence, ensure_ascii=False, indent=2)}]}]}
     else:
         print("OpenAI request failed with HTTP status", exc.code, file=sys.stderr)
         sys.exit(1)
