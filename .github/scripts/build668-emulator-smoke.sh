@@ -5,7 +5,13 @@ set -euo pipefail
 mkdir -p emulator-reports
 
 # Preserve crash evidence even when installation, launch or assertions fail.
-trap 'adb logcat -d -v brief > emulator-reports/logcat.txt 2>/dev/null || true' EXIT
+collect_evidence() {
+  adb logcat -d -v brief > emulator-reports/logcat.txt 2>/dev/null || true
+  if [ ! -s emulator-reports/screenshot.png ]; then
+    adb exec-out screencap -p > emulator-reports/screenshot.png 2>/dev/null || true
+  fi
+}
+trap collect_evidence EXIT
 
 adb wait-for-device
 adb shell getprop sys.boot_completed | tee emulator-reports/boot.txt
@@ -22,13 +28,21 @@ if [ -z "$pkg" ]; then
 fi
 printf '%s\n' "$pkg" | tee emulator-reports/package.txt
 
+# Monkey can abort on unrelated Android system ANRs; launch the manifest's
+# explicit exported launcher Activity instead, and verify the app process.
+activity="$(sed -n "s/^launchable-activity: name='\([^']*\)'.*/\1/p" emulator-reports/aapt-badging.txt | head -1)"
+if [ -z "$activity" ]; then
+  echo "::error::No launchable Activity in APK manifest" >&2
+  exit 1
+fi
 adb logcat -c
-adb shell monkey -p "$pkg" -c android.intent.category.LAUNCHER 1 | tee emulator-reports/launch.txt
-grep -q 'Events injected: 1' emulator-reports/launch.txt
+adb shell am start -W -a android.intent.action.MAIN -c android.intent.category.LAUNCHER -n "$pkg/$activity" | tee emulator-reports/launch.txt
+grep -q 'Status: ok' emulator-reports/launch.txt
 sleep 12
+adb shell pidof "$pkg" | tee emulator-reports/pid.txt
+test -s emulator-reports/pid.txt
 adb shell dumpsys activity activities > emulator-reports/activities.txt
-adb shell screencap -p /sdcard/build668-smoke.png
-adb pull /sdcard/build668-smoke.png emulator-reports/screenshot.png
+adb exec-out screencap -p > emulator-reports/screenshot.png
 adb logcat -d -v brief > emulator-reports/logcat.txt
 
 if grep -q 'FATAL EXCEPTION' emulator-reports/logcat.txt; then
