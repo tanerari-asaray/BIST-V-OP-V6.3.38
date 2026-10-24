@@ -8,6 +8,24 @@ for i in $(seq 1 120); do
   sleep 2
 done
 test "$(adb shell getprop sys.boot_completed | tr -d '\r')" = "1"
+# sys.boot_completed does not guarantee System UI/launcher is responsive.
+# Give Android 15 background startup a bounded settling period, then capture
+# pre-app evidence. Never dismiss ANR dialogs or count a blocked UI as success.
+sleep 45
+adb shell input keyevent KEYCODE_HOME || true
+adb shell rm -f /data/local/tmp/preflight.xml || true
+adb shell uiautomator dump /data/local/tmp/preflight.xml > emulator-evidence/preflight-uiautomator.txt 2>&1 || true
+adb exec-out cat /data/local/tmp/preflight.xml > emulator-evidence/preflight.xml 2> emulator-evidence/preflight-read-error.txt || true
+adb exec-out screencap -p > emulator-evidence/preflight.png || true
+adb logcat -d > emulator-evidence/preflight-logcat.txt || true
+if [[ ! -s emulator-evidence/preflight.xml ]]; then
+  echo "SMOKE_FAIL: system UI preflight hierarchy unavailable before APK install" | tee emulator-evidence/result.txt
+  exit 1
+fi
+if grep -Eq 'resource-id="android:id/aerr_|text="[^"]*(isn.t responding|keeps stopping)' emulator-evidence/preflight.xml; then
+  echo "SMOKE_FAIL: Android system ANR/crash dialog present before APK install" | tee emulator-evidence/result.txt
+  exit 1
+fi
 adb install -r "$APK"
 AAPT="$ANDROID_HOME/build-tools/35.0.0/aapt"
 PKG="$("$AAPT" dump badging "$APK" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)"
