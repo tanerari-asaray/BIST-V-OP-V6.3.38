@@ -15,7 +15,7 @@ adb install -r "$APK_PATH" | tee emulator-reports/install.txt
 grep -q 'Success' emulator-reports/install.txt
 
 "$ANDROID_HOME/build-tools/35.0.0/aapt" dump badging "$APK_PATH" > emulator-reports/aapt-badging.txt
-pkg="$(sed -n "s/^package: name='\\([^']*\\)'.*/\\1/p" emulator-reports/aapt-badging.txt | head -1)"
+pkg="$(sed -n "s/^package: name='\([^']*\)'.*/\1/p" emulator-reports/aapt-badging.txt | head -1)"
 if [ -z "$pkg" ]; then
   echo "::error::Could not determine APK package from aapt badging" >&2
   exit 1
