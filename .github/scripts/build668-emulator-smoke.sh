@@ -30,7 +30,7 @@ printf '%s\n' "$pkg" | tee emulator-reports/package.txt
 
 # Monkey can abort on unrelated Android system ANRs; launch the manifest's
 # explicit exported launcher Activity instead, and verify the app process.
-activity="$(sed -n "s/^launchable-activity: name='\\([^']*\\)'.*/\\1/p" emulator-reports/aapt-badging.txt | head -1)"
+activity="$(sed -n "s/^launchable-activity: name='\([^']*\)'.*/\1/p" emulator-reports/aapt-badging.txt | head -1)"
 if [ -z "$activity" ]; then
   echo "::error::No launchable Activity in APK manifest" >&2
   exit 1
