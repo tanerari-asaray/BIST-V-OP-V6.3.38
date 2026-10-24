@@ -2,7 +2,7 @@ name: BIST VIOP Build 668 APK
 on:
   push:
     paths:
-      - 'source/build668.zip'
+      - 'BIST-VIOP-V6.3.38-BUILD668-KAYNAK-PAKETI.zip'
       - '.github/workflows/build-668-from-zip.yml'
   workflow_dispatch:
 permissions:
@@ -18,32 +18,101 @@ jobs:
           distribution: temurin
           java-version: '17'
       - uses: android-actions/setup-android@v3
+        with:
+          # The action default includes the removed legacy SDK package `tools`.
+          packages: 'platform-tools'
       - name: Install SDK
         run: sdkmanager 'platforms;android-35' 'build-tools;35.0.0' 'platform-tools'
       - uses: gradle/actions/setup-gradle@v4
       - name: Check source archive
         run: |
-          test -s source/build668.zip || { echo "::error::Upload source/build668.zip before running"; exit 1; }
-          unzip -t source/build668.zip | tail -n 2
+          test -s BIST-VIOP-V6.3.38-BUILD668-KAYNAK-PAKETI.zip || { echo "::error::Build 668 source archive missing"; exit 1; }
+          unzip -t BIST-VIOP-V6.3.38-BUILD668-KAYNAK-PAKETI.zip | tail -n 2
           mkdir -p extracted
-          unzip -q source/build668.zip -d extracted
-          test -f extracted/android-v6323/gradlew
-          test -f extracted/android-v6323/gradle/wrapper/gradle-wrapper.jar
+          unzip -q BIST-VIOP-V6.3.38-BUILD668-KAYNAK-PAKETI.zip -d extracted
+          WRAPPER="$(find extracted -type f -name gradlew -print -quit)"
+          test -n "$WRAPPER" || { echo "::error::Gradle wrapper missing from source archive"; exit 1; }
+          PROJECT_DIR="$(dirname "$WRAPPER")"
+          test -f "$PROJECT_DIR/gradle/wrapper/gradle-wrapper.jar"
+          echo "PROJECT_DIR=$PROJECT_DIR" >> "$GITHUB_ENV"
       - name: Build and test
-        working-directory: extracted/android-v6323
         run: |
+          cd "$PROJECT_DIR"
           chmod +x ./gradlew
           ./gradlew --no-daemon --stacktrace --max-workers=2 :app:compileDiagnosticKotlin :app:testDiagnosticUnitTest :app:lintDiagnostic :app:assembleDiagnostic
       - name: Validate APK
         run: |
-          find extracted/android-v6323/app/build/outputs/apk/diagnostic -name '*.apk' -type f -size +0c -print -exec unzip -t {} \; -exec sha256sum {} \;
+          APK_COUNT="$(find "$PROJECT_DIR/app/build/outputs/apk/diagnostic" -name '*.apk' -type f -size +0c | wc -l)"
+          test "$APK_COUNT" -gt 0 || { echo "::error::No non-empty diagnostic APK produced"; exit 1; }
+          find "$PROJECT_DIR/app/build/outputs/apk/diagnostic" -name '*.apk' -type f -size +0c -print -exec unzip -t {} \; -exec sha256sum {} \;
       - name: Upload APK and reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
           name: BIST-VIOP-BUILD668-APK-AND-REPORTS
           path: |
-            extracted/android-v6323/app/build/outputs/apk/diagnostic/*.apk
-            extracted/android-v6323/app/build/reports/**
-            extracted/android-v6323/app/build/test-results/**
+            extracted/**/app/build/outputs/apk/diagnostic/*.apk
+            extracted/**/app/build/reports/**
+            extracted/**/app/build/test-results/**
+          if-no-files-found: warn
+
+  emulator-smoke:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+      - name: Download built APK
+        uses: actions/download-artifact@v4
+        with:
+          name: BIST-VIOP-BUILD668-APK-AND-REPORTS
+          path: downloaded
+      - name: Locate APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find downloaded -name '*.apk' -type f -size +0c -print -quit)"
+          test -n "$apk"
+          echo "APK_PATH=$apk" >> "$GITHUB_ENV"
+      - name: Android 15 emulator installation and launch smoke
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_2
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim
+          script: |
+            set -eu
+            mkdir -p emulator-reports
+            adb wait-for-device
+            adb shell getprop sys.boot_completed | tee emulator-reports/boot.txt
+            adb install -r "$APK_PATH"
+            pkg="$(aapt dump badging "$APK_PATH" | sed -n "s/^package: name='\([^']*\)'.*/\1/p" | head -1)"
+            test -n "$pkg"
+            echo "$pkg" | tee emulator-reports/package.txt
+            adb logcat -c
+            adb shell monkey -p "$pkg" -c android.intent.category.LAUNCHER 1 | tee emulator-reports/launch.txt
+            sleep 12
+            adb shell screencap -p /sdcard/build668-smoke.png
+            adb pull /sdcard/build668-smoke.png emulator-reports/screenshot.png
+            adb logcat -d -v brief > emulator-reports/logcat.txt
+            if grep -E "FATAL EXCEPTION|Process: $pkg" emulator-reports/logcat.txt | grep -q "FATAL EXCEPTION"; then
+              echo "Fatal exception detected in emulator log" >&2
+              exit 1
+            fi
+            test -s emulator-reports/screenshot.png
+      - name: Upload emulator screenshots and logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: BUILD668-ANDROID15-EMULATOR-SMOKE
+          path: emulator-reports/
           if-no-files-found: warn
