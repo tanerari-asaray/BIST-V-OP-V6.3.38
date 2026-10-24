@@ -1,5 +1,11 @@
 name: BIST VIOP AI Agent (diagnostic)
 on:
+  push:
+    branches:
+      - automation/openai-agent-20261024
+    paths:
+      - '.github/workflows/bist-ai-agent.yml'
+      - '.github/scripts/bist_ai_agent.py'
   workflow_dispatch:
   schedule:
     - cron: '0 5,8,11,14,17 * * *'
