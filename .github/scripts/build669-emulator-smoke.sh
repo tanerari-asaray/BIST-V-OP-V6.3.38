@@ -24,5 +24,23 @@ adb pull /sdcard/window.xml emulator-evidence/window.xml || true
 adb exec-out screencap -p > emulator-evidence/launch.png
 test -s emulator-evidence/launch.png
 adb logcat -d > emulator-evidence/logcat.txt
-if grep -A 15 'FATAL EXCEPTION' emulator-evidence/logcat.txt | grep -F "Process: $PKG"; then exit 1; fi
-echo "SMOKE_PASS: boot, install, process, screenshot; chart and S/D interactions NOT verified" | tee emulator-evidence/result.txt
+if grep -A 15 'FATAL EXCEPTION' emulator-evidence/logcat.txt | grep -F "Process: $PKG"; then
+  echo "SMOKE_FAIL: app FATAL EXCEPTION" | tee emulator-evidence/result.txt
+  exit 1
+fi
+# A running PID and screenshot do not prove the app is usable. The previous
+# successful run showed a blocking Android "Process system isn't responding"
+# dialog over the app, with only the system dialog in the UI hierarchy.
+if [[ ! -s emulator-evidence/window.xml ]]; then
+  echo "SMOKE_FAIL: missing foreground UI hierarchy" | tee emulator-evidence/result.txt
+  exit 1
+fi
+if grep -Eq 'resource-id="android:id/aerr_|text="[^"]*(isn.t responding|keeps stopping)' emulator-evidence/window.xml; then
+  echo "SMOKE_FAIL: blocking Android ANR/crash dialog visible (may be system-side)" | tee emulator-evidence/result.txt
+  exit 1
+fi
+if ! grep -Fq "package=\"$PKG\"" emulator-evidence/window.xml; then
+  echo "SMOKE_FAIL: app not present in foreground UI hierarchy" | tee emulator-evidence/result.txt
+  exit 1
+fi
+echo "SMOKE_PASS: boot, install, process, foreground UI, screenshot; chart and S/D interactions NOT verified" | tee emulator-evidence/result.txt
