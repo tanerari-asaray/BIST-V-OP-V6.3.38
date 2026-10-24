@@ -51,8 +51,19 @@ try:
     with urllib.request.urlopen(req, timeout=90) as response:
         result = json.load(response)
 except urllib.error.HTTPError as exc:
-    print("OpenAI request failed with HTTP status", exc.code, file=sys.stderr)
-    sys.exit(1)
+    # Keep CI diagnosis useful when OpenAI billing/rate limits prevent a response.
+    # Never print response bodies: they may contain account information.
+    if exc.code == 429:
+        print("OpenAI HTTP 429: rate limit or account quota/billing restriction.")
+        print("Publishing evidence-only fallback; AI analysis was NOT performed.")
+        result = {"output": [{"content": [{"type": "output_text",
+            "text": "OpenAI analizi çalışmadı (HTTP 429: kota, faturalandırma veya hız sınırı). "
+                    "Aşağıdaki başarısız iş adımları GitHub Actions API verisidir; "
+                    "otomatik düzeltme yapılmadı.\\n\\n" +
+                    json.dumps(evidence, ensure_ascii=False, indent=2)}]}]}]}
+    else:
+        print("OpenAI request failed with HTTP status", exc.code, file=sys.stderr)
+        sys.exit(1)
 
 parts = [part.get("text", "") for output in result.get("output", [])
          for part in output.get("content", []) if part.get("type") == "output_text"]
